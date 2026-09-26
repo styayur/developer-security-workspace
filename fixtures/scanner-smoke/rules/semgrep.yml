@@ -1,0 +1,14 @@
+rules:
+  - id: dsw.sql-injection-smoke
+    languages:
+      - typescript
+    message: User input is concatenated into a SQL query.
+    severity: ERROR
+    patterns:
+      - pattern-regex: "SELECT \\* FROM users WHERE id = '\\\" \\+ id \\+ \"'"
+    metadata:
+      cwe:
+        - CWE-89
+      category: security
+      technology:
+        - typescript

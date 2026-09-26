@@ -1,0 +1,55 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Developer Security Workspace",
+  "version": "0.1.0-preview",
+  "identifier": "dev.styayur.developer-security-workspace",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist",
+    "features": [
+      "desktop"
+    ]
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Developer Security Workspace",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1040,
+        "minHeight": 680,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' asset: http://asset.localhost; connect-src ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-eval' blob:; worker-src 'self' blob:; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "Local-first SARIF vulnerability explorer and scanner runtime",
+    "longDescription": "Developer Security Workspace is a local-first desktop client for scanning, exploring, tracing, and triaging security findings.",
+    "copyright": "Copyright (C) 2026 Developer Security Workspace contributors",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    }
+  }
+}

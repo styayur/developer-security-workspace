@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Trivy",
+          "version": "fixture-1.0",
+          "rules": [
+            {
+              "id": "CVE-2024-EXAMPLE",
+              "shortDescription": {
+                "text": "Example vulnerable dependency"
+              },
+              "fullDescription": {
+                "text": "Fixture-only vulnerability metadata. No real package or CVE is represented."
+              },
+              "helpUri": "https://example.invalid/CVE-2024-EXAMPLE",
+              "properties": {
+                "tags": [
+                  "vulnerability",
+                  "CWE-1104"
+                ],
+                "security-severity": "7.5"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "CVE-2024-EXAMPLE",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Fixture dependency example-package 0.0.0 is reported vulnerable."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "package-lock.json"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 5,
+                  "endLine": 42,
+                  "endColumn": 30
+                }
+              }
+            }
+          ],
+          "properties": {
+            "security-severity": "7.5",
+            "package": "example-package"
+          }
+        }
+      ]
+    }
+  ]
+}

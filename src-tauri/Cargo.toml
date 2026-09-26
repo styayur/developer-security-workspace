@@ -1,0 +1,52 @@
+[package]
+name = "developer-security-workspace"
+version = "0.1.0-preview"
+description = "Local-first SARIF vulnerability explorer and scanner runtime"
+authors = ["Developer Security Workspace contributors"]
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/styayur/developer-security-workspace"
+
+[lib]
+name = "developer_security_workspace_lib"
+crate-type = ["lib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[features]
+default = []
+desktop = ["dep:tauri", "dep:tauri-plugin-dialog", "dep:tauri-plugin-opener"]
+
+[dependencies]
+async-trait = "0.1"
+blake3 = "1"
+chrono = { version = "0.4", features = ["serde"] }
+rusqlite = { version = "0.37", features = ["bundled", "chrono", "serde_json"] }
+regex = "1"
+toml = "0.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [], optional = true }
+tauri-plugin-dialog = { version = "2", optional = true }
+tauri-plugin-opener = { version = "2", optional = true }
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "process", "rt-multi-thread", "sync", "time"] }
+tokio-util = "0.7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+url = "2"
+uuid = { version = "1", features = ["v4", "serde"] }
+walkdir = "2"
+which = "8"
+tempfile = "3"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_Threading"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -1,0 +1,24 @@
+schema_version = 1
+id = "io.example.gitleaks"
+name = "Gitleaks"
+version = "1.0.0"
+
+[scanner]
+executable = "gitleaks"
+
+[output]
+format = "sarif"
+
+[capabilities]
+sast = false
+secrets = true
+sca = false
+iac = false
+container = false
+licenses = false
+vulnerabilities = false
+misconfiguration = false
+
+[license]
+spdx = "MIT"
+bundled = false

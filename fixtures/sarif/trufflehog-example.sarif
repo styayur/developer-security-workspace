@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "TruffleHog",
+          "version": "fixture-1.0",
+          "rules": [
+            {
+              "id": "trufflehog.example-token",
+              "shortDescription": {
+                "text": "Example credential detected"
+              },
+              "properties": {
+                "tags": [
+                  "secret"
+                ],
+                "cwe": [
+                  "CWE-798"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "trufflehog.example-token",
+          "level": "error",
+          "message": {
+            "text": "Fixture credential marker detected. Raw value is redacted."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": ".env.example"
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 1,
+                  "endLine": 1,
+                  "endColumn": 24
+                }
+              }
+            }
+          ],
+          "properties": {
+            "verified": false,
+            "redacted": "EXAMPLE_••••••••CRET",
+            "detector": "ExampleDetector"
+          }
+        }
+      ]
+    }
+  ]
+}

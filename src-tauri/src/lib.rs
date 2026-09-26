@@ -122,9 +122,9 @@ mod integration_tests {
                     format!("github_token={github}\nslack_token={slack}\n"),
                 )
                 .expect("write synthetic secrets");
-                trufflehog_temp = Some(temp);
-                trufflehog_temp
-                    .as_ref()
+                temporary_workspaces.push(temp);
+                temporary_workspaces
+                    .last()
                     .expect("temp dir")
                     .path()
                     .to_path_buf()

@@ -172,7 +172,12 @@ mod tests {
         .await
         .expect("command runs");
         assert!(output.success);
-        assert!(output.stdout.to_ascii_lowercase().contains("cmd.exe"));
+        let expected = if cfg!(windows) {
+            "cmd.exe"
+        } else {
+            "safe argument"
+        };
+        assert!(output.stdout.to_ascii_lowercase().contains(expected));
     }
 
     #[test]

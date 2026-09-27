@@ -291,7 +291,7 @@ kbd { font-size: 9px; padding: 2px 5px; border: 1px solid hsl(var(--line)); bord
 .live-progress { margin: 10px; padding: 10px; background: hsl(var(--accent) / .06); border: 1px solid hsl(var(--accent) / .25); border-radius: 6px; }
 .live-progress > strong { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .live-progress > div { display: grid; grid-template-columns: 100px 80px 1fr; align-items: center; gap: 8px; }
-.diff-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.diff-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
 .diff-summary button { min-height: 65px; display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 4px 12px; text-align: left; padding: 10px 14px; border: 1px solid hsl(var(--line)); border-radius: 7px; background: hsl(var(--panel)); color: hsl(var(--muted)); cursor: pointer; }
 .diff-summary button span { grid-row: span 2; font-size: 22px; font-weight: 650; color: hsl(var(--ink)); }
 .diff-summary button.active { border-color: hsl(var(--accent)); background: hsl(var(--accent) / .06); }
@@ -414,3 +414,8 @@ kbd { font-size: 9px; padding: 2px 5px; border: 1px solid hsl(var(--line)); bord
   .scan-launch-panel { grid-template-columns: 1fr; }
   .launch-actions { align-items: flex-start; }
 }
+
+.trace-path { display: grid; gap: 6px; }
+.trace-path select { width: 100%; background: hsl(var(--panel)); color: hsl(var(--ink)); border: 1px solid hsl(var(--line)); padding: 7px; border-radius: 4px; }
+.trace-step:focus-visible, section[aria-label="Trace debugger"]:focus-visible { outline: 2px solid hsl(var(--accent)); outline-offset: 2px; }
+.extension-card > label { display: block; margin: 12px 0; }

@@ -1,0 +1,35 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {}
+      },
+      "results": [
+        {},
+        {
+          "message": {
+            "text": "Source sink wording is not kind evidence"
+          },
+          "codeFlows": [
+            {
+              "threadFlows": [
+                {
+                  "locations": [
+                    {
+                      "location": {
+                        "message": {
+                          "text": "source sink"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

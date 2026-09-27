@@ -23,12 +23,14 @@ export function FindingsPage() {
   const [filters, setFilters] = useState<FindingFilters>(() => stored?.projectId === project.id ? stored : emptyFilters(project.id));
   const [search, setSearch] = useState(params.get("q") ?? filters.search ?? "");
   const deferredSearch = useDeferredValue(search);
+  const [offset, setOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   useEffect(() => { setFilters((current) => ({ ...current, projectId: project.id, search: deferredSearch })); }, [deferredSearch, project.id]);
   useEffect(() => { setStored(filters); }, [filters, setStored]);
-  const query = useQuery({ queryKey: ["findings", project.id, filters], queryFn: () => api.listFindings(filters) });
-  const scannerOptions = useQuery({ queryKey: ["findings", project.id, "scanner-options"], queryFn: () => api.listFindings(emptyFilters(project.id)) });
-  const data = query.data ?? [];
+  useEffect(() => { setOffset(0); scrollRef.current?.scrollTo?.(0, 0); }, [filters]);
+  const query = useQuery({ queryKey: ["findings", project.id, filters, offset], queryFn: () => api.findingPage(filters, offset, 100), gcTime: 30_000 });
+  const scannerOptions = useQuery({ queryKey: ["findings", project.id, "scanner-options"], queryFn: () => api.findingScanners(project.id) });
+  const data = query.data?.items ?? [];
   const virtualizer = useVirtualizer({ count: data.length, getScrollElement: () => scrollRef.current, estimateSize: () => 78, overscan: 10 });
   const update = <K extends keyof FindingFilters>(key: K, value: FindingFilters[K]) => setFilters((current) => ({ ...current, [key]: value }));
   const toggle = <T,>(key: "severities" | "categories" | "statuses", value: T) => {
@@ -38,7 +40,8 @@ export function FindingsPage() {
   const reset = () => { const next = emptyFilters(project.id); setSearch(""); setFilters(next); };
   return (
     <div className="page findings-page">
-      <header className="page-header"><div><span className="eyebrow">Security inbox</span><h1>Findings</h1><p>Search, filter, and open every normalized finding in the active project.</p></div><span className="result-count">{data.length.toLocaleString()} results</span></header>
+      <header className="page-header"><div><span className="eyebrow">Security inbox</span><h1>Findings</h1><p>Search, filter, and open every normalized finding in the active project.</p></div><span className="result-count">{(query.data?.total ?? 0).toLocaleString()} results</span></header>
+      {project.name === "demo-workspace" && <div className="inline-notice">Tutorial: open SQL injection → Trace (choose a path and step) → Fix → Raw → Triage → Scan history → Compare. Two synthetic scans are ready; no code or secrets are sent anywhere.</div>}
       <Panel className="filters-panel">
         <div className="filter-main">
           <label className="search-field filter-search"><Search size={15} /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search title, message, rule, file, or scanner" /></label>
@@ -46,13 +49,14 @@ export function FindingsPage() {
           <Button variant="ghost" onClick={reset}><RotateCcw size={14} />Reset</Button>
         </div>
         <div className="filter-secondary"><span><Filter size={13} />Filter</span>
-          <label><span>Scanner</span><select value={filters.scanners[0] ?? ""} onChange={(event) => update("scanners", event.target.value ? [event.target.value] : [])}><option value="">All scanners</option>{[...new Set((scannerOptions.data ?? []).map((finding) => finding.scannerId))].map((scanner) => <option key={scanner} value={scanner}>{scanner}</option>)}</select></label>
+          <label><span>Scanner</span><select value={filters.scanners[0] ?? ""} onChange={(event) => update("scanners", event.target.value ? [event.target.value] : [])}><option value="">All scanners</option>{(scannerOptions.data ?? []).map((scanner) => <option key={scanner} value={scanner}>{scanner}</option>)}</select></label>
           <label><span>Category</span><select value={filters.categories[0] ?? ""} onChange={(event) => update("categories", event.target.value ? [event.target.value as FindingCategory] : [])}><option value="">All categories</option>{categories.map((category) => <option key={category} value={category}>{category}</option>)}</select></label>
           <label><span>Status</span><select value={filters.statuses[0] ?? ""} onChange={(event) => update("statuses", event.target.value ? [event.target.value as FindingStatus] : [])}><option value="">All statuses</option>{statuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}</select></label>
-          <label className="file-filter"><span>File</span><Input value={filters.filePath ?? ""} onChange={(event) => update("filePath", event.target.value || undefined)} placeholder="src/…" /></label><label className="file-filter"><span>CWE</span><Input value={filters.cwe ?? ""} onChange={(event) => update("cwe", event.target.value || undefined)} placeholder="CWE-89" /></label><label className="file-filter"><span>Rule</span><Input value={filters.ruleId ?? ""} onChange={(event) => update("ruleId", event.target.value || undefined)} placeholder="rule id" /></label>
+          <label><span>Lifecycle</span><select value={filters.diffClass ?? ""} onChange={(event) => update("diffClass", event.target.value || undefined)}><option value="">All classes</option>{["new", "existing", "changed", "reopened"].map((value) => <option key={value}>{value}</option>)}</select></label><label className="file-filter"><span>File</span><Input value={filters.filePath ?? ""} onChange={(event) => update("filePath", event.target.value || undefined)} placeholder="src/…" /></label><label className="file-filter"><span>CWE</span><Input value={filters.cwe ?? ""} onChange={(event) => update("cwe", event.target.value || undefined)} placeholder="CWE-89" /></label><label className="file-filter"><span>Rule</span><Input value={filters.ruleId ?? ""} onChange={(event) => update("ruleId", event.target.value || undefined)} placeholder="rule id" /></label>
         </div>
       </Panel>
-      {query.isLoading ? <div className="page-loading"><Spinner label="Loading findings…" /></div> : query.error ? <ErrorState error={query.error} /> : data.length === 0 ? <EmptyState icon={<ShieldCheck size={25} />} title={query.data?.length ? "No findings match these filters" : "No findings in this project"} description={query.data?.length ? "Adjust or reset the filters to widen the result set." : "Run a scanner, import SARIF, or open the Demo Workspace."} action={<Button onClick={reset}>Reset filters</Button>} /> : <Panel className="findings-table"><div className="findings-heading"><span>Severity</span><span>Finding</span></div><div ref={scrollRef} className="virtual-scroll"><div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>{virtualizer.getVirtualItems().map((virtualRow) => { const finding = data[virtualRow.index]; return <div key={finding.id} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: "translateY(" + virtualRow.start + "px)" }}><FindingRow finding={finding} projectId={project.id} /></div>; })}</div></div></Panel>}
+      <div className="trace-controls"><Button disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - 100))}>Previous page</Button><span>{offset + (data.length ? 1 : 0)}–{offset + data.length} / {query.data?.total ?? 0}</span><Button disabled={offset + 100 >= (query.data?.total ?? 0)} onClick={() => setOffset(offset + 100)}>Next page</Button></div>
+      {query.isLoading ? <div className="page-loading"><Spinner label="Loading findings…" /></div> : query.error ? <ErrorState error={query.error} /> : data.length === 0 ? <EmptyState icon={<ShieldCheck size={25} />} title={query.data?.total ? "No findings match these filters" : "No findings in this project"} description={query.data?.total ? "Adjust or reset the filters to widen the result set." : "Run a scanner, import SARIF, or open the Demo Workspace."} action={<Button onClick={reset}>Reset filters</Button>} /> : <Panel className="findings-table"><div className="findings-heading"><span>Severity</span><span>Finding</span></div><div ref={scrollRef} className="virtual-scroll"><div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>{virtualizer.getVirtualItems().map((virtualRow) => { const finding = data[virtualRow.index]; return <div key={finding.id} style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: "translateY(" + virtualRow.start + "px)" }}><FindingRow finding={finding} projectId={project.id} /></div>; })}</div></div></Panel>}
     </div>
   );
 }

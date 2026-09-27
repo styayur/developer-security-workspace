@@ -1,35 +1,35 @@
-# Security Model
+# Security model
 
-## Scanner execution
+## Process execution
 
-Providers accept structured configuration. The process layer receives an executable path and an argument vector. It never evaluates a shell command string.
+Providers use `Command::new(executable).args(argv)` with null stdin, piped output and no shell evaluation. Source roots are canonicalized against the selected project. Windows user-selected executables must be `.exe`; `.cmd`, `.bat` and `.ps1` wrappers are rejected. No scanner is silently downloaded.
 
-Controls include:
+Cancellation checks run before spawn and terminate the process tree on Windows (taskkill) and the process group on Unix. Scan deadlines cancel the child token before awaiting logs. Detection commands have a ten-second deadline. There are at most two concurrent providers in a scan.
 
-- executable existence validation
-- Windows .exe requirement for user-selected scanner binaries
-- workspace target canonicalization
-- 15 minute timeout
-- cancellation token
-- process-tree termination on Windows and process termination on Unix
-- 2 MiB per stdout/stderr capture bound
-- temporary output directories
-- source-independent logs
+Human output capture is capped at 2 MiB per stream. Fixed-size reads avoid unbounded allocation for unterminated lines; log events are capped at 2,000 lines/2 MiB per stream and oversized/private-key lines are omitted. JSON log records use recursive redaction. Machine JSON is captured separately (128 MiB cap) and never emitted as stdout log events. Oversized machine output fails explicitly instead of importing a truncated report.
 
-## Workspace and source access
+## Workspace boundary
 
-SARIF artifact URIs and source viewer paths are normalized and constrained to the active workspace root. Path traversal is rejected. Source files are read-only, limited to 2 MiB, and binary content is rejected.
+Source files are read-only, UTF-8, limited to 2 MiB and constrained by canonical root containment, including symlinks. Fingerprint context uses this same guard. SARIF paths may be retained for display when they cannot be mapped safely, but cannot bypass source access validation. Fixes are displayed; they do not automatically write to the workspace.
 
-## Secret handling
+## Secrets
 
-The redactor handles obvious AWS, GitHub, Slack, Bearer, and private-key patterns. Recursive JSON redaction masks values for keys containing secret, token, password, private key, client secret, or raw. Redaction runs before database persistence and before scanner logs reach the UI.
+Normalization and artifact persistence redact secret-keyed JSON and obvious AWS/GitHub/Slack/Bearer/private-key patterns. Raw scanner JSON stays in memory only until its trusted adapter processes it. TruffleHog adapters discard Raw, RawV2 and SecretParts. Triage notes are pattern-redacted before persistence. Schema migration re-redacts legacy artifact payloads.
 
-The Preview intentionally favors over-redaction. Raw SARIF inspection uses the redacted result retained by normalization.
+The redactor is heuristic and is not a guarantee that arbitrary unlabelled secrets can be detected. The source viewer intentionally displays the user's local source, which may contain secrets. Do not publish screenshots of private workspaces. Demo files use synthetic values only. No source context is stored as fingerprint metadata, only its hash.
 
-## Extension safety
+## Declarative extensions
 
-Extension manifests are parsed and validated but not executed. Executable values must be command names without path separators or shell expressions. The Preview does not expose an arbitrary JavaScript plugin runtime.
+Runtime v1 executes only the reviewed Gitleaks offline/read-only argument profile; other valid manifests remain metadata. No JavaScript/eval runtime, arbitrary executable path from a manifest, shell interpreter or environment interpolation is accepted. `{workspace}` and `{output}` expand as complete argv elements; the output path is an application-created temporary file. Other recognized placeholders are reserved and cannot execute through the v1 profile.
 
-## Privacy
+The UI shows the executable's resolved path, arguments, capabilities, workspace/network declarations, output, license and untrusted status. An explicit checkbox approves the manifest plus installed binary digest for the selected workspace. Changes invalidate approval. The launch path revalidates the manifest and digest. Gitleaks runs from a temporary directory with configuration environment overrides removed.
 
-No telemetry, analytics, login, account, or cloud upload exists. External scanners are independently installed and may maintain their own network or update behavior. The application does not silently download scanner binaries.
+Permissions are declarations and restrictions on the supported invocation, **not an OS sandbox for a malicious native binary**. Users must trust the binary they install. Runtime v1 rejects requested workspace writes/network access and does not accept arbitrary flags or external config files. Additional execution profiles require reviewed code and tests. See [extension model](extension-model.md).
+
+## Privacy and external scanners
+
+DSW has no telemetry, login, analytics, cloud storage or remote backend. Scanner installations remain user-managed. Existing native scanners may download rules/databases or verify credentials according to explicit scanner settings; their own network behavior is not an OS-enforced DSW permission. The manual smoke workflow explicitly downloads pinned tools and Trivy's database, and disables TruffleHog verification of synthetic candidates.
+
+## Dependency policy
+
+Linux and Windows CI exercise Rust/TypeScript. Dependency checks use cargo-audit, cargo-deny and production high/critical frontend audit. No blanket advisory suppression is configured. See [release operations](release.md) for maintaining narrowly scoped exceptions and self-signed releases.

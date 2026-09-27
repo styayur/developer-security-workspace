@@ -1,0 +1,48 @@
+[
+  {
+    "name": "insert one line",
+    "lineDelta": 1,
+    "expected": "exact"
+  },
+  {
+    "name": "insert forty lines",
+    "lineDelta": 40,
+    "expected": "exact"
+  },
+  {
+    "name": "delete lines",
+    "lineDelta": -3,
+    "expected": "exact"
+  },
+  {
+    "name": "rename file",
+    "path": "src/renamed.ts",
+    "expected": "context"
+  },
+  {
+    "name": "move in function",
+    "lineDelta": 10,
+    "expected": "exact"
+  },
+  {
+    "name": "move across functions",
+    "symbol": "other",
+    "expected": null
+  },
+  {
+    "name": "numeric message drift",
+    "message": "Problem on line 900",
+    "expected": "exact"
+  },
+  {
+    "name": "rule change same CWE",
+    "rule": "other-rule",
+    "expected": null
+  },
+  {
+    "name": "semantic relocation",
+    "path": "new.ts",
+    "context": "different",
+    "expected": "relocated"
+  }
+]

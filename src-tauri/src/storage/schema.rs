@@ -1,4 +1,4 @@
-pub const SCHEMA_VERSION: i64 = 1;
+pub const SCHEMA_VERSION: i64 = 2;
 
 pub const SCHEMA_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS schema_migrations (

@@ -1,0 +1,1 @@
+{"DetectorName": "Synthetic", "Verified": false, "Raw": "SYNTHETIC_NOT_A_SECRET", "RawV2": "SYNTHETIC_NOT_A_SECRET", "SecretParts": {"part": "SYNTHETIC_NOT_A_SECRET"}, "Redacted": "[synthetic redacted]", "SourceMetadata": {"Data": {"Filesystem": {"file": ".env.example", "line": 1}}}}

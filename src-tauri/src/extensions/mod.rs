@@ -1,28 +1,40 @@
 use crate::error::{AppError, AppResult};
 use crate::security_ir::{ExtensionLicense, ExtensionManifest, ExtensionOutput, ExtensionScanner};
 use serde::Deserialize;
+mod runtime;
+pub use runtime::ExtensionProvider;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RawManifest {
     schema_version: u32,
     id: String,
     name: String,
     version: String,
     scanner: RawScanner,
+    #[serde(default)]
+    scan: RawScan,
+    #[serde(default)]
+    permissions: RawPermissions,
     output: RawOutput,
     capabilities: RawCapabilities,
     license: RawLicense,
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RawScanner {
     executable: String,
+    #[serde(default)]
+    version_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 struct RawOutput {
     format: String,
+    #[serde(default)]
+    source: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -87,16 +99,30 @@ pub fn parse_manifest(source: &str, source_path: Option<PathBuf>) -> AppResult<E
     let raw: RawManifest = toml::from_str(source)
         .map_err(|error| AppError::InvalidInput(format!("Invalid extension manifest: {error}")))?;
     validate(&raw)?;
-    Ok(ExtensionManifest {
+    let mut manifest = ExtensionManifest {
+        scan: crate::security_ir::ExtensionScan {
+            args: raw.scan.args,
+            timeout_seconds: raw.scan.timeout_seconds,
+        },
+        permissions: crate::security_ir::ExtensionPermissions {
+            workspace_read: raw.permissions.workspace_read,
+            workspace_write: raw.permissions.workspace_write,
+            network: raw.permissions.network,
+        },
+        approval_digest: String::new(),
+        resolved_executable: None,
+        runnable: false,
         schema_version: raw.schema_version,
         id: raw.id,
         name: raw.name,
         version: raw.version,
         scanner: ExtensionScanner {
             executable: raw.scanner.executable,
+            version_args: raw.scanner.version_args,
         },
         output: ExtensionOutput {
             format: raw.output.format,
+            source: raw.output.source,
         },
         capabilities: crate::security_ir::ScannerCapabilities {
             sast: raw.capabilities.sast,
@@ -114,7 +140,34 @@ pub fn parse_manifest(source: &str, source_path: Option<PathBuf>) -> AppResult<E
         },
         trusted: false,
         source_path: source_path.map(|path| path.to_string_lossy().to_string()),
-    })
+    };
+    manifest.runnable = runtime::validate_profile(&manifest).is_ok();
+    if manifest.runnable {
+        manifest.resolved_executable = which::which(&manifest.scanner.executable)
+            .ok()
+            .and_then(|p| p.canonicalize().ok())
+            .filter(|p| {
+                !cfg!(windows) || p.extension().is_some_and(|e| e.eq_ignore_ascii_case("exe"))
+            })
+            .map(|p| p.to_string_lossy().to_string());
+    }
+    let mut digest = blake3::Hasher::new();
+    digest.update(source.as_bytes());
+    if let Some(path) = &manifest.resolved_executable {
+        use std::io::Read;
+        digest.update(path.as_bytes());
+        let mut file = std::fs::File::open(path)?;
+        let mut buffer = [0u8; 65536];
+        loop {
+            let n = file.read(&mut buffer)?;
+            if n == 0 {
+                break;
+            }
+            digest.update(&buffer[..n]);
+        }
+    }
+    manifest.approval_digest = digest.finalize().to_hex().to_string();
+    Ok(manifest)
 }
 
 fn validate(raw: &RawManifest) -> AppResult<()> {
@@ -133,14 +186,21 @@ fn validate(raw: &RawManifest) -> AppResult<()> {
             "Extension name and version are required.".into(),
         ));
     }
-    if raw.scanner.executable.trim().is_empty() || raw.scanner.executable.contains(['/', '\\']) {
+    if !valid_command(&raw.scanner.executable) {
         return Err(AppError::InvalidInput(
             "Extension executable must be a command name, not a path or shell expression.".into(),
         ));
     }
-    if !matches!(raw.output.format.as_str(), "sarif" | "json") {
+    if raw.output.format != "sarif" {
         return Err(AppError::InvalidInput(
-            "Extension output format must be 'sarif' or 'json'.".into(),
+            "Extension output format must be 'sarif'.".into(),
+        ));
+    }
+    validate_args(&raw.scan.args)?;
+    validate_args(&raw.scanner.version_args)?;
+    if raw.scan.timeout_seconds > 900 {
+        return Err(AppError::InvalidInput(
+            "Extension timeout cannot exceed 900 seconds.".into(),
         ));
     }
     if raw.license.spdx.trim().is_empty() {
@@ -172,4 +232,80 @@ mod tests {
         let error = parse_manifest(&invalid, None).unwrap_err();
         assert!(error.to_string().contains("not a path or shell expression"));
     }
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawScan {
+    #[serde(default)]
+    args: Vec<String>,
+    #[serde(default)]
+    timeout_seconds: u64,
+}
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct RawPermissions {
+    #[serde(default)]
+    workspace_read: bool,
+    #[serde(default)]
+    workspace_write: bool,
+    #[serde(default)]
+    network: bool,
+}
+
+fn valid_command(command: &str) -> bool {
+    !command.is_empty()
+        && command.len() <= 80
+        && command.as_bytes()[0].is_ascii_alphanumeric()
+        && command
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "_-".contains(c))
+        && ![
+            "cmd",
+            "powershell",
+            "pwsh",
+            "sh",
+            "bash",
+            "zsh",
+            "python",
+            "python3",
+            "node",
+            "ruby",
+            "perl",
+            "wscript",
+            "cscript",
+            "mshta",
+            "rundll32",
+        ]
+        .contains(&command.to_ascii_lowercase().as_str())
+}
+fn validate_args(args: &[String]) -> AppResult<()> {
+    if args.len() > 64 {
+        return Err(AppError::InvalidInput(
+            "Too many extension arguments.".into(),
+        ));
+    }
+    for arg in args {
+        if arg.len() > 4096
+            || arg.contains("..")
+            || arg
+                .chars()
+                .any(|c| c.is_control() || "$%`|;&<>".contains(c))
+        {
+            return Err(AppError::InvalidInput(
+                "Shell expansion or control characters are not permitted in extension arguments."
+                    .into(),
+            ));
+        }
+        let mut remaining = arg.clone();
+        for placeholder in ["{workspace}", "{output}", "{config}", "{changed_files}"] {
+            remaining = remaining.replace(placeholder, "");
+        }
+        if remaining.contains(['{', '}']) {
+            return Err(AppError::InvalidInput(
+                "Unknown extension placeholder.".into(),
+            ));
+        }
+    }
+    Ok(())
 }

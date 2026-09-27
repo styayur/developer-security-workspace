@@ -1,0 +1,256 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Semgrep",
+          "version": "fixture-1.0",
+          "rules": [
+            {
+              "id": "javascript.taint.sql-flow",
+              "shortDescription": {
+                "text": "Tainted request input reaches SQL sink"
+              },
+              "properties": {
+                "tags": [
+                  "security",
+                  "CWE-89"
+                ],
+                "security-severity": "9.1"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "javascript.taint.sql-flow",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Data flows from req.query.id to db.query."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/api/user.ts"
+                },
+                "region": {
+                  "startLine": 8,
+                  "startColumn": 17,
+                  "endLine": 8,
+                  "endColumn": 55
+                }
+              },
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "router.user"
+                }
+              ]
+            }
+          ],
+          "codeFlows": [
+            {
+              "message": {
+                "text": "Request input to SQL sink"
+              },
+              "threadFlows": [
+                {
+                  "id": "main",
+                  "message": {
+                    "text": "Main execution thread"
+                  },
+                  "locations": [
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/api/user.ts"
+                          },
+                          "region": {
+                            "startLine": 7,
+                            "startColumn": 15,
+                            "endLine": 7,
+                            "endColumn": 38
+                          }
+                        },
+                        "message": {
+                          "text": "User input enters the handler."
+                        }
+                      },
+                      "kinds": [
+                        "source"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/api/user.ts"
+                          },
+                          "region": {
+                            "startLine": 8,
+                            "startColumn": 17,
+                            "endLine": 8,
+                            "endColumn": 55
+                          }
+                        },
+                        "message": {
+                          "text": "Input is interpolated into a query."
+                        }
+                      },
+                      "kinds": [
+                        "data"
+                      ]
+                    },
+                    {
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/api/user.ts"
+                          },
+                          "region": {
+                            "startLine": 9,
+                            "startColumn": 24,
+                            "endLine": 9,
+                            "endColumn": 40
+                          }
+                        },
+                        "message": {
+                          "text": "The query reaches the database sink."
+                        }
+                      },
+                      "kinds": [
+                        "sink"
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "message": {
+                "text": "Independent path"
+              },
+              "threadFlows": [
+                {
+                  "id": "alternative",
+                  "locations": [
+                    {
+                      "kinds": [
+                        "call"
+                      ],
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/db.ts"
+                          },
+                          "region": {
+                            "startLine": 2,
+                            "startColumn": 3,
+                            "endLine": 2,
+                            "endColumn": 18
+                          }
+                        },
+                        "message": {
+                          "text": "Database call"
+                        }
+                      }
+                    },
+                    {
+                      "kinds": [
+                        "return"
+                      ],
+                      "location": {
+                        "physicalLocation": {
+                          "artifactLocation": {
+                            "uri": "src/api/user.ts"
+                          },
+                          "region": {
+                            "startLine": 8,
+                            "startColumn": 17,
+                            "endLine": 8,
+                            "endColumn": 55
+                          }
+                        },
+                        "logicalLocations": [
+                          {
+                            "fullyQualifiedName": "router.user"
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "empty",
+                  "locations": []
+                }
+              ]
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "fixture-codeflow-v1"
+          },
+          "relatedLocations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/db.ts"
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 3,
+                  "endLine": 2,
+                  "endColumn": 18
+                }
+              },
+              "message": {
+                "text": "Database call"
+              }
+            }
+          ],
+          "fixes": [
+            {
+              "description": {
+                "text": "Use a parameterized query"
+              },
+              "artifactChanges": [
+                {
+                  "artifactLocation": {
+                    "uri": "src/api/user.ts"
+                  },
+                  "replacements": [
+                    {
+                      "deletedRegion": {
+                        "startLine": 8,
+                        "startColumn": 3,
+                        "endLine": 9,
+                        "endColumn": 40
+                      },
+                      "insertedContent": {
+                        "text": "const result = await db.query(\"SELECT * FROM users WHERE id = $1\", [id]);"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "taxa": [
+            {
+              "id": "CWE-89"
+            }
+          ],
+          "fingerprints": {
+            "z/native": "native-z",
+            "a/native": "native-a"
+          }
+        }
+      ]
+    }
+  ]
+}

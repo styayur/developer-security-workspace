@@ -14,11 +14,26 @@ pub struct TrivyProvider;
 
 #[async_trait]
 impl ScannerProvider for TrivyProvider {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> &str {
         "trivy"
     }
-    fn display_name(&self) -> &'static str {
+    fn display_name(&self) -> &str {
         "Trivy"
+    }
+    fn config_fields(&self) -> Vec<crate::security_ir::ScannerConfigField> {
+        vec![crate::security_ir::ScannerConfigField {
+            key: "scanners".into(),
+            label: "Scan categories".into(),
+            kind: "multi_select".into(),
+            default_value: serde_json::json!(["vuln", "misconfig", "secret", "license"]),
+            options: vec![
+                "vuln".into(),
+                "misconfig".into(),
+                "secret".into(),
+                "license".into(),
+            ],
+            help: None,
+        }]
     }
     fn capabilities(&self) -> ScannerCapabilities {
         ScannerCapabilities {

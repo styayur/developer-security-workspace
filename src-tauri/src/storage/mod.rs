@@ -1,4 +1,10 @@
+mod lifecycle;
+mod migrations;
+mod persist;
+mod query;
 mod schema;
+pub mod streaming;
+use lifecycle::decode;
 
 use crate::error::{AppError, AppResult};
 use crate::security_ir::*;
@@ -6,7 +12,7 @@ use chrono::Utc;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 use uuid::Uuid;
@@ -20,14 +26,10 @@ impl Database {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let connection = Connection::open(path)?;
+        let mut connection = Connection::open(path)?;
         connection.pragma_update(None, "journal_mode", "WAL")?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
-        connection.execute_batch(schema::SCHEMA_SQL)?;
-        connection.execute(
-            "INSERT OR IGNORE INTO schema_migrations(version, applied_at) VALUES (?1, ?2)",
-            params![schema::SCHEMA_VERSION, Utc::now().to_rfc3339()],
-        )?;
+        migrations::migrate(&mut connection)?;
         Ok(Self {
             connection: Mutex::new(connection),
         })
@@ -120,6 +122,7 @@ impl Database {
             finding_count: 0,
             duration_ms: None,
             source: source.to_string(),
+            security_ir_version: SECURITY_IR_VERSION,
         };
         let connection = self.lock()?;
         connection.execute(
@@ -174,18 +177,20 @@ impl Database {
                     .num_milliseconds()
                     .max(0) as u64
             });
-        let count = self
-            .list_findings(&FindingFilters {
-                scan_run_id: Some(scan_run_id.to_string()),
-                ..Default::default()
-            })?
-            .len();
+        let count: i64 = self.lock()?.query_row(
+            "SELECT COUNT(*) FROM findings WHERE scan_run_id=?1",
+            [scan_run_id],
+            |row| row.get(0),
+        )?;
         {
-            let connection = self.lock()?;
-            connection.execute(
+            let mut connection = self.lock()?;
+            let tx = connection.transaction()?;
+            tx.execute(
                 "UPDATE scan_runs SET finished_at=?1,status=?2,finding_count=?3,duration_ms=?4 WHERE id=?5",
-                params![finished.to_rfc3339(), enum_string(&status)?, count as i64, duration.map(|value| value as i64), scan_run_id],
+                params![finished.to_rfc3339(), enum_string(&status)?, count, duration.map(|value| value as i64), scan_run_id],
             )?;
+            lifecycle::finalize(&tx, scan_run_id, &status)?;
+            tx.commit()?;
         }
         self.get_scan_run(scan_run_id)
     }
@@ -260,160 +265,82 @@ impl Database {
         }
         let mut connection = self.lock()?;
         let transaction = connection.transaction()?;
-        for original in findings {
-            let mut finding = original.clone();
-            let triage = transaction
-                .query_row(
-                    "SELECT status,note FROM finding_triage WHERE project_id=?1 AND workspace_fingerprint=?2",
-                    params![finding.project_id, finding.workspace_fingerprint],
-                    |row| Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?)),
-                )
-                .optional()?;
-            if let Some((status, note)) = triage {
-                finding.status = parse_enum(&status);
-                finding.triage_note = note;
-            } else {
-                let previous_count: i64 = transaction.query_row(
-                    "SELECT COUNT(*) FROM findings WHERE project_id=?1 AND workspace_fingerprint=?2 AND scan_run_id<>?3",
-                    params![finding.project_id, finding.workspace_fingerprint, finding.scan_run_id],
-                    |row| row.get(0),
-                )?;
-                finding.status = if previous_count > 0 {
-                    FindingStatus::Existing
-                } else {
-                    FindingStatus::New
-                };
-            }
-            transaction.execute(
-                r#"INSERT OR REPLACE INTO findings(
-                    id,scan_run_id,project_id,scanner_id,scanner_name,rule_id,title,message,severity,category,
-                    file_path,start_line,start_column,end_line,end_column,cwe_json,status,triage_note,
-                    native_fingerprint,workspace_fingerprint,location_json,related_locations_json,code_flows_json,
-                    fixes_json,taxa_json,raw_sarif_json
-                  ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,?23,?24,?25,?26)"#,
-                params![
-                    finding.id, finding.scan_run_id, finding.project_id, finding.scanner_id,
-                    finding.scanner_name, finding.rule_id, finding.title, finding.message,
-                    enum_string(&finding.severity)?, enum_string(&finding.category)?,
-                    finding.location.file_path, finding.location.region.start_line as i64,
-                    finding.location.region.start_column as i64, finding.location.region.end_line as i64,
-                    finding.location.region.end_column as i64, serde_json::to_string(&finding.cwe)?,
-                    enum_string(&finding.status)?, finding.triage_note, finding.native_fingerprint,
-                    finding.workspace_fingerprint, serde_json::to_string(&finding.location)?,
-                    serde_json::to_string(&finding.related_locations)?, serde_json::to_string(&finding.code_flows)?,
-                    serde_json::to_string(&finding.fixes)?, serde_json::to_string(&finding.taxa)?,
-                    serde_json::to_string(&finding.raw_sarif)?
-                ],
-            )?;
-            for location in
-                std::iter::once(&finding.location).chain(finding.related_locations.iter())
-            {
-                transaction.execute(
-                    "INSERT INTO finding_locations(finding_id,relation,file_path,start_line,start_column,end_line,end_column) VALUES (?1,?2,?3,?4,?5,?6,?7)",
-                    params![finding.id, "related", location.file_path, location.region.start_line as i64, location.region.start_column as i64, location.region.end_line as i64, location.region.end_column as i64],
-                )?;
-            }
-            if let Some(native) = &finding.native_fingerprint {
-                transaction.execute(
-                    "INSERT INTO finding_fingerprints(finding_id,kind,value) VALUES (?1,'native',?2)",
-                    params![finding.id, native],
-                )?;
-            }
-            transaction.execute(
-                "INSERT INTO finding_fingerprints(finding_id,kind,value) VALUES (?1,'workspace',?2)",
-                params![finding.id, finding.workspace_fingerprint],
-            )?;
-            transaction.execute(
-                r#"INSERT INTO rules(project_id,scanner_id,rule_id,name,description,help,help_uri,severity,cwe_json,tags_json)
-                   VALUES (?1,?2,?3,?4,NULL,NULL,NULL,?5,?6,'[]')
-                   ON CONFLICT(project_id,scanner_id,rule_id) DO UPDATE SET severity=excluded.severity,cwe_json=excluded.cwe_json"#,
-                params![finding.project_id, finding.scanner_id, finding.rule_id, finding.title, enum_string(&finding.severity)?, serde_json::to_string(&finding.cwe)?],
-            )?;
+        let prepared = lifecycle::assign(&transaction, findings)?;
+        for (finding, assigned) in findings.iter().zip(&prepared) {
+            persist::finding(&transaction, finding, assigned)?;
         }
         transaction.commit()?;
         Ok(findings.len())
     }
 
     pub fn list_findings(&self, filters: &FindingFilters) -> AppResult<Vec<FindingListItem>> {
-        let rows = {
-            let connection = self.lock()?;
-            let mut statement = connection.prepare(
-                r#"SELECT id,scan_run_id,scanner_id,scanner_name,rule_id,title,message,severity,category,
-                          file_path,start_line,cwe_json,status,triage_note,workspace_fingerprint
-                   FROM findings
-                   WHERE (?1 IS NULL OR project_id=?1) AND (?2 IS NULL OR scan_run_id=?2)
-                   ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END, file_path, start_line"#,
-            )?;
-            let mapped = statement.query_map(
-                params![filters.project_id, filters.scan_run_id],
-                finding_list_from_row,
-            )?;
-            mapped.filter_map(Result::ok).collect::<Vec<_>>()
-        };
-        let search = filters
-            .search
-            .as_ref()
-            .map(|value| value.to_ascii_lowercase());
-        Ok(rows
-            .into_iter()
-            .filter(|item| {
-                filters.severities.is_empty() || filters.severities.contains(&item.severity)
-            })
-            .filter(|item| {
-                filters.scanners.is_empty() || filters.scanners.contains(&item.scanner_id)
-            })
-            .filter(|item| {
-                filters.categories.is_empty() || filters.categories.contains(&item.category)
-            })
-            .filter(|item| filters.statuses.is_empty() || filters.statuses.contains(&item.status))
-            .filter(|item| {
-                filters
-                    .cwe
-                    .as_ref()
-                    .is_none_or(|cwe| item.cwe.iter().any(|value| value.eq_ignore_ascii_case(cwe)))
-            })
-            .filter(|item| {
-                filters
-                    .rule_id
-                    .as_ref()
-                    .is_none_or(|rule| item.rule_id.eq_ignore_ascii_case(rule))
-            })
-            .filter(|item| {
-                filters.file_path.as_ref().is_none_or(|path| {
-                    item.file_path
-                        .to_ascii_lowercase()
-                        .contains(&path.to_ascii_lowercase())
-                })
-            })
-            .filter(|item| {
-                search.as_ref().is_none_or(|query| {
-                    item.title.to_ascii_lowercase().contains(query)
-                        || item.message.to_ascii_lowercase().contains(query)
-                        || item.rule_id.to_ascii_lowercase().contains(query)
-                        || item.file_path.to_ascii_lowercase().contains(query)
-                        || item.scanner_name.to_ascii_lowercase().contains(query)
-                        || item
-                            .cwe
-                            .iter()
-                            .any(|cwe| cwe.to_ascii_lowercase().contains(query))
-                })
-            })
-            .collect())
+        query::list(&*self.lock()?, filters, None, 0)
+    }
+    pub fn finding_page(
+        &self,
+        filters: &FindingFilters,
+        offset: usize,
+        limit: usize,
+    ) -> AppResult<FindingPage> {
+        let connection = self.lock()?;
+        let limit = limit.clamp(1, 500);
+        Ok(FindingPage {
+            items: query::list(&connection, filters, Some(limit), offset)?,
+            total: query::count(&connection, filters)?,
+            offset,
+            limit,
+        })
+    }
+    pub fn finding_scanners(&self, project: &str) -> AppResult<Vec<String>> {
+        let connection = self.lock()?;
+        let mut stmt = connection.prepare(
+            "SELECT DISTINCT scanner_id FROM findings WHERE project_id=?1 ORDER BY scanner_id",
+        )?;
+        let rows = stmt
+            .query_map([project], |row| row.get(0))?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(rows)
+    }
+
+    pub fn finding_navigation(&self, finding_id: &str) -> AppResult<serde_json::Value> {
+        let connection = self.lock()?;
+        let project: String = connection.query_row(
+            "SELECT project_id FROM findings WHERE id=?1",
+            [finding_id],
+            |row| row.get(0),
+        )?;
+        Ok(connection.query_row("WITH ordered AS (SELECT id,LAG(id) OVER w AS previous,LEAD(id) OVER w AS next,ROW_NUMBER() OVER w AS position,COUNT(*) OVER () AS total FROM findings WHERE project_id=?1 WINDOW w AS (ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,file_path,start_line,id)) SELECT previous,next,position,total FROM ordered WHERE id=?2",params![project,finding_id],|row|Ok(serde_json::json!({"previous":row.get::<_,Option<String>>(0)?,"next":row.get::<_,Option<String>>(1)?,"position":row.get::<_,usize>(2)?,"total":row.get::<_,usize>(3)?})))?)
     }
 
     pub fn get_finding(&self, finding_id: &str) -> AppResult<Finding> {
         let connection = self.lock()?;
-        connection
+        let mut finding = connection
             .query_row(
-                r#"SELECT id,scan_run_id,project_id,scanner_id,scanner_name,rule_id,title,message,severity,category,
-                          status,triage_note,native_fingerprint,workspace_fingerprint,location_json,related_locations_json,
-                          code_flows_json,fixes_json,taxa_json,raw_sarif_json,cwe_json
-                   FROM findings WHERE id=?1"#,
+                &format!("{DETAIL_SELECT} WHERE id=?1"),
                 params![finding_id],
                 finding_from_row,
             )
             .optional()?
-            .ok_or_else(|| AppError::NotFound(format!("Finding {finding_id}")))
+            .ok_or_else(|| AppError::NotFound(format!("Finding {finding_id}")))?;
+        if let Some(reference) = &finding.raw_reference {
+            if !reference.artifact_id.is_empty() {
+                let raw: String = connection.query_row("SELECT raw_json FROM scan_artifact_results WHERE artifact_id=?1 AND run_index=?2 AND result_index=?3",
+                    params![reference.artifact_id,reference.run_index as i64,reference.result_index as i64], |row| row.get(0))?;
+                finding.raw_sarif = serde_json::from_str(&raw)?;
+            }
+        }
+        let identity = connection.query_row("SELECT first_seen,last_seen,occurrence_count,fixed_at,reopened_at,state FROM finding_identities WHERE id=?1", [&finding.lifecycle.identity_id], |row| {
+            Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,i64>(2)?,row.get::<_,Option<String>>(3)?,row.get::<_,Option<String>>(4)?,row.get::<_,String>(5)?))
+        }).optional()?;
+        if let Some((first, last, count, fixed, reopened, state)) = identity {
+            finding.lifecycle.first_seen = first;
+            finding.lifecycle.last_seen = last;
+            finding.lifecycle.occurrence_count = count as usize;
+            finding.lifecycle.fixed_at = fixed;
+            finding.lifecycle.reopened_at = reopened;
+            finding.lifecycle.state = parse_enum(&state);
+        }
+        Ok(finding)
     }
 
     pub fn update_triage(
@@ -423,18 +350,18 @@ impl Database {
         note: Option<String>,
     ) -> AppResult<Finding> {
         let finding = self.get_finding(finding_id)?;
-        let now = Utc::now().to_rfc3339();
-        let connection = self.lock()?;
-        connection.execute(
-            r#"INSERT INTO finding_triage(project_id,workspace_fingerprint,status,note,updated_at)
-               VALUES (?1,?2,?3,?4,?5)
-               ON CONFLICT(project_id,workspace_fingerprint) DO UPDATE SET status=excluded.status,note=excluded.note,updated_at=excluded.updated_at"#,
-            params![finding.project_id, finding.workspace_fingerprint, enum_string(&status)?, note, now],
+        let note = note.map(|value| crate::secret_redaction::SecretRedactor::redact_text(&value));
+        let mut connection = self.lock()?;
+        let tx = connection.transaction()?;
+        tx.execute(
+            "UPDATE finding_identities SET status=?1,note=?2 WHERE id=?3",
+            params![enum_string(&status)?, note, finding.lifecycle.identity_id],
         )?;
-        connection.execute(
-            "UPDATE findings SET status=?1,triage_note=?2 WHERE workspace_fingerprint=?3 AND project_id=?4",
-            params![enum_string(&status)?, note, finding.workspace_fingerprint, finding.project_id],
+        tx.execute(
+            "UPDATE findings SET status=?1,triage_note=?2 WHERE identity_id=?3",
+            params![enum_string(&status)?, note, finding.lifecycle.identity_id],
         )?;
+        tx.commit()?;
         drop(connection);
         self.get_finding(finding_id)
     }
@@ -442,55 +369,49 @@ impl Database {
     pub fn dashboard(&self, project_id: &str) -> AppResult<DashboardSummary> {
         let project = self.get_project(project_id)?;
         let last_scan = self.latest_scan_run(project_id)?;
-        let findings = if let Some(run) = &last_scan {
-            self.list_findings(&FindingFilters {
-                project_id: Some(project_id.to_string()),
-                scan_run_id: Some(run.id.clone()),
-                ..Default::default()
-            })?
-        } else {
-            Vec::new()
-        };
-        let fixed = if let Some(run) = &last_scan {
-            self.scan_diff(project_id, &run.id, None)?
-                .map(|diff| diff.fixed_count)
-                .unwrap_or(0)
-        } else {
-            0
-        };
-        let mut severity = SeverityCounts::default();
-        let mut categories = HashMap::new();
-        let mut scanners = HashSet::new();
-        for finding in &findings {
-            match finding.severity {
-                Severity::Critical => severity.critical += 1,
-                Severity::High => severity.high += 1,
-                Severity::Medium => severity.medium += 1,
-                Severity::Low => severity.low += 1,
-                Severity::Info => severity.info += 1,
-            }
-            *categories
-                .entry(format!("{:?}", finding.category).to_ascii_lowercase())
-                .or_insert(0) += 1;
-            scanners.insert(finding.scanner_id.clone());
-        }
-        Ok(DashboardSummary {
+        let mut summary = DashboardSummary {
             project,
-            last_scan,
-            total_findings: findings.len(),
-            new_findings: findings
-                .iter()
-                .filter(|item| item.status == FindingStatus::New)
-                .count(),
-            existing_findings: findings
-                .iter()
-                .filter(|item| item.status == FindingStatus::Existing)
-                .count(),
-            fixed_findings: fixed,
-            severity,
-            categories,
-            scanner_count: scanners.len(),
-        })
+            last_scan: last_scan.clone(),
+            ..Default::default()
+        };
+        if let Some(run) = last_scan {
+            summary.fixed_findings = self
+                .scan_diff(project_id, &run.id, None)?
+                .map_or(0, |d| d.fixed_count);
+            let connection = self.lock()?;
+            let mut stmt = connection.prepare("SELECT severity,category,diff_class,COUNT(*) FROM findings WHERE scan_run_id=?1 GROUP BY severity,category,diff_class")?;
+            let rows = stmt.query_map([&run.id], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, usize>(3)?,
+                ))
+            })?;
+            for row in rows {
+                let (severity, category, class, count) = row?;
+                summary.total_findings += count;
+                match severity.as_str() {
+                    "critical" => summary.severity.critical += count,
+                    "high" => summary.severity.high += count,
+                    "medium" => summary.severity.medium += count,
+                    "low" => summary.severity.low += count,
+                    _ => summary.severity.info += count,
+                }
+                *summary.categories.entry(category).or_default() += count;
+                if class == "new" || class == "reopened" {
+                    summary.new_findings += count;
+                } else {
+                    summary.existing_findings += count;
+                }
+            }
+            summary.scanner_count = connection.query_row(
+                "SELECT COUNT(DISTINCT scanner_id) FROM findings WHERE scan_run_id=?1",
+                [&run.id],
+                |row| row.get(0),
+            )?;
+        }
+        Ok(summary)
     }
 
     pub fn scan_diff(
@@ -507,74 +428,55 @@ impl Database {
         let Some(previous) = previous else {
             return Ok(None);
         };
-        let current = self.list_findings(&FindingFilters {
-            project_id: Some(project_id.to_string()),
-            scan_run_id: Some(current_run_id.to_string()),
-            ..Default::default()
-        })?;
-        let previous_items = self.list_findings(&FindingFilters {
-            project_id: Some(project_id.to_string()),
-            scan_run_id: Some(previous.id.clone()),
-            ..Default::default()
-        })?;
-        let previous_by_fingerprint = previous_items
-            .iter()
-            .map(|item| (&item.workspace_fingerprint, item))
-            .collect::<HashMap<_, _>>();
-        let current_by_fingerprint = current
-            .iter()
-            .map(|item| (&item.workspace_fingerprint, item))
-            .collect::<HashMap<_, _>>();
-        let new = current
-            .iter()
-            .filter(|item| !previous_by_fingerprint.contains_key(&item.workspace_fingerprint))
-            .cloned()
-            .collect::<Vec<_>>();
-        let fixed = previous_items
-            .iter()
-            .filter(|item| !current_by_fingerprint.contains_key(&item.workspace_fingerprint))
-            .cloned()
-            .collect::<Vec<_>>();
-        let existing = current
-            .iter()
-            .filter(|item| previous_by_fingerprint.contains_key(&item.workspace_fingerprint))
-            .cloned()
-            .collect::<Vec<_>>();
-        Ok(Some(ScanDiff {
-            current_run_id: current_run_id.to_string(),
-            previous_run_id: previous.id,
-            new_count: new.len(),
-            fixed_count: fixed.len(),
-            existing_count: existing.len(),
-            new,
-            fixed,
-            existing,
-        }))
+        let current = self.get_scan_run(current_run_id)?;
+        if current.project_id != project_id || previous.project_id != project_id {
+            return Err(AppError::InvalidInput(
+                "Diff runs must belong to the same project.".into(),
+            ));
+        }
+        Ok(Some(query::diff(
+            &*self.lock()?,
+            current_run_id,
+            &previous.id,
+            0,
+            100,
+        )?))
+    }
+    pub fn scan_diff_page(
+        &self,
+        project: &str,
+        current: &str,
+        previous: Option<&str>,
+        offset: usize,
+        limit: usize,
+    ) -> AppResult<Option<ScanDiff>> {
+        let Some(diff) = self.scan_diff(project, current, previous)? else {
+            return Ok(None);
+        };
+        Ok(Some(query::diff(
+            &*self.lock()?,
+            current,
+            &diff.previous_run_id,
+            offset,
+            limit,
+        )?))
     }
 
     pub fn list_rules(&self, project_id: &str) -> AppResult<Vec<Rule>> {
-        let findings = self.list_findings(&FindingFilters {
-            project_id: Some(project_id.to_string()),
-            ..Default::default()
-        })?;
-        let mut rules = HashMap::new();
-        for finding in findings {
-            rules
-                .entry((finding.scanner_id.clone(), finding.rule_id.clone()))
-                .or_insert_with(|| Rule {
-                    id: finding.rule_id,
-                    name: Some(finding.title),
-                    scanner_id: finding.scanner_id,
-                    description: None,
-                    help: None,
-                    help_uri: None,
-                    severity: finding.severity,
-                    cwe: finding.cwe,
-                    tags: Vec::new(),
-                });
-        }
-        let mut values = rules.into_values().collect::<Vec<_>>();
-        values.sort_by(|left, right| left.id.cmp(&right.id));
+        let connection = self.lock()?;
+        let mut stmt=connection.prepare("SELECT rule_id,name,scanner_id,severity,cwe_json FROM rules WHERE project_id=?1 ORDER BY rule_id")?;
+        let values = stmt
+            .query_map([project_id], |row| {
+                Ok(Rule {
+                    id: row.get(0)?,
+                    name: row.get(1)?,
+                    scanner_id: row.get(2)?,
+                    severity: parse_enum(&row.get::<_, String>(3)?),
+                    cwe: decode(row.get(4)?)?,
+                    ..Default::default()
+                })
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(values)
     }
 
@@ -652,22 +554,71 @@ impl Database {
         scanner_id: &str,
         format: &str,
         raw_sarif: &str,
-    ) -> AppResult<()> {
-        let connection = self.lock()?;
-        connection.execute(
-            "INSERT INTO scan_artifacts(id,scan_run_id,scanner_id,format,raw_sarif,created_at) VALUES (?1,?2,?3,?4,?5,?6)",
-            params![Uuid::new_v4().to_string(), scan_run_id, scanner_id, format, raw_sarif, Utc::now().to_rfc3339()],
+    ) -> AppResult<String> {
+        let value: serde_json::Value = serde_json::from_str(raw_sarif)?;
+        let mut value = crate::secret_redaction::SecretRedactor::redact_json(&value);
+        let id = Uuid::new_v4().to_string();
+        let mut connection = self.lock()?;
+        let tx = connection.transaction()?;
+        // Store run metadata once, and each result once. Finding details resolve this reference lazily.
+        tx.execute("INSERT INTO scan_artifacts(id,scan_run_id,scanner_id,format,raw_sarif,created_at) VALUES (?1,?2,?3,?4,'{}',?5)",
+            params![id,scan_run_id,scanner_id,format,Utc::now().to_rfc3339()])?;
+        if let Some(runs) = value
+            .get_mut("runs")
+            .and_then(serde_json::Value::as_array_mut)
+        {
+            for (ri, run) in runs.iter_mut().enumerate() {
+                if let Some(results) = run
+                    .get_mut("results")
+                    .and_then(serde_json::Value::as_array_mut)
+                {
+                    for (index, result) in results.drain(..).enumerate() {
+                        tx.execute(
+                            "INSERT INTO scan_artifact_results VALUES (?1,?2,?3,?4)",
+                            params![id, ri as i64, index as i64, serde_json::to_string(&result)?],
+                        )?;
+                    }
+                }
+            }
+        }
+        tx.execute(
+            "UPDATE scan_artifacts SET raw_sarif=?1 WHERE id=?2",
+            params![serde_json::to_string(&value)?, id],
         )?;
-        Ok(())
+        tx.commit()?;
+        Ok(id)
     }
 
     pub fn scan_artifacts(&self, scan_run_id: &str) -> AppResult<Vec<String>> {
         let connection = self.lock()?;
+        let size: i64 = connection.query_row("SELECT COALESCE(SUM(length(raw_sarif)),0)+(SELECT COALESCE(SUM(length(raw_json)),0) FROM scan_artifact_results WHERE artifact_id IN (SELECT id FROM scan_artifacts WHERE scan_run_id=?1)) FROM scan_artifacts WHERE scan_run_id=?1",[scan_run_id],|row|row.get(0))?;
+        if size > 8 * 1024 * 1024 {
+            return Err(AppError::InvalidInput("Full SARIF exceeds the 8 MiB inspector limit. Inspect individual results or export the scan.".into()));
+        }
         let mut statement = connection.prepare(
-            "SELECT raw_sarif FROM scan_artifacts WHERE scan_run_id=?1 ORDER BY created_at",
+            "SELECT id,raw_sarif FROM scan_artifacts WHERE scan_run_id=?1 ORDER BY created_at",
         )?;
-        let rows = statement.query_map(params![scan_run_id], |row| row.get::<_, String>(0))?;
-        Ok(rows.filter_map(Result::ok).collect())
+        let artifacts = statement
+            .query_map([scan_run_id], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        let mut output = Vec::new();
+        for (id, raw) in artifacts {
+            let mut value: serde_json::Value = serde_json::from_str(&raw)?;
+            let mut stmt = connection.prepare("SELECT run_index,raw_json FROM scan_artifact_results WHERE artifact_id=?1 ORDER BY run_index,result_index")?;
+            let rows = stmt.query_map([id], |r| {
+                Ok((r.get::<_, usize>(0)?, r.get::<_, String>(1)?))
+            })?;
+            for row in rows {
+                let (ri, json) = row?;
+                if let Some(results) = value["runs"][ri]["results"].as_array_mut() {
+                    results.push(serde_json::from_str(&json)?);
+                }
+            }
+            output.push(serde_json::to_string(&value)?);
+        }
+        Ok(output)
     }
 
     fn scanner_runs(&self, scan_run_id: &str) -> AppResult<Vec<ScannerRun>> {
@@ -728,6 +679,7 @@ fn scan_run_from_row(row: &Row<'_>) -> rusqlite::Result<ScanRun> {
         finding_count: row.get::<_, i64>(7)? as usize,
         duration_ms: row.get::<_, Option<i64>>(8)?.map(|value| value as u64),
         source: row.get(9)?,
+        security_ir_version: SECURITY_IR_VERSION,
         scanners: Vec::new(),
     })
 }
@@ -750,6 +702,8 @@ fn finding_list_from_row(row: &Row<'_>) -> rusqlite::Result<FindingListItem> {
         status: parse_enum(&row.get::<_, String>(12)?),
         triage_note: row.get(13)?,
         workspace_fingerprint: row.get(14)?,
+        identity_id: row.get(15)?,
+        diff_class: parse_enum(&row.get::<_, String>(16)?),
     })
 }
 
@@ -782,7 +736,15 @@ fn finding_from_row(row: &Row<'_>) -> rusqlite::Result<Finding> {
         fixes: serde_json::from_str(&fixes).unwrap_or_default(),
         taxa: serde_json::from_str(&taxa).unwrap_or_default(),
         raw_sarif: serde_json::from_str(&raw).unwrap_or_default(),
-        cwe: serde_json::from_str(&cwe).unwrap_or_default(),
+        cwe: decode(cwe)?,
+        provenance: decode(row.get(21)?)?,
+        fingerprints: decode(row.get(22)?)?,
+        lifecycle: {
+            let mut lifecycle: FindingLifecycle = decode(row.get(23)?)?;
+            lifecycle.identity_id = row.get(25)?;
+            lifecycle
+        },
+        raw_reference: row.get::<_, Option<String>>(24)?.map(decode).transpose()?,
     })
 }
 
@@ -802,7 +764,7 @@ mod tests {
     use super::*;
     use tempfile::tempdir;
 
-    fn project(path: &Path) -> Project {
+    pub(super) fn project(path: &Path) -> Project {
         Project {
             id: Uuid::new_v4().to_string(),
             name: "test".into(),
@@ -814,7 +776,7 @@ mod tests {
         }
     }
 
-    fn finding(project: &Project, run_id: &str, line: u32) -> Finding {
+    pub(super) fn finding(project: &Project, run_id: &str, line: u32) -> Finding {
         Finding {
             id: Uuid::new_v4().to_string(),
             scan_run_id: run_id.into(),
@@ -907,3 +869,13 @@ mod tests {
         assert_eq!(diff.new_count, 0);
     }
 }
+
+const DETAIL_SELECT: &str = "SELECT id,scan_run_id,project_id,scanner_id,scanner_name,rule_id,title,message,severity,category,
+status,triage_note,native_fingerprint,workspace_fingerprint,location_json,related_locations_json,code_flows_json,fixes_json,taxa_json,raw_sarif_json,cwe_json,
+provenance_json,fingerprints_json,lifecycle_json,raw_reference_json,identity_id FROM findings";
+
+#[cfg(test)]
+mod regression_tests;
+
+#[cfg(test)]
+mod streaming_tests;

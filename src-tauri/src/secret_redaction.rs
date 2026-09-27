@@ -46,13 +46,13 @@ fn patterns() -> &'static Vec<Regex> {
     PATTERNS.get_or_init(|| {
         vec![
             Regex::new(r"(?i)\b(AKIA|ASIA)[A-Z0-9]{16}\b").expect("AWS key regex"),
-            Regex::new(r"(?i)\b(gh[pousr]_[A-Za-z0-9_]{20,})\b").expect("GitHub token regex"),
+            Regex::new(r"(?i)\b(?:gh[pousr]_[A-Za-z0-9_]{20,})\b").expect("GitHub token regex"),
             Regex::new(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{16,}").expect("Bearer regex"),
             Regex::new(
                 r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----",
             )
             .expect("private key regex"),
-            Regex::new(r"(?i)\b(xox[baprs]-[A-Za-z0-9-]{10,})\b").expect("Slack token regex"),
+            Regex::new(r"(?i)\b(?:xox[baprs]-[A-Za-z0-9-]{10,})\b").expect("Slack token regex"),
         ]
     })
 }

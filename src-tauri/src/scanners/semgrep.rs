@@ -14,11 +14,17 @@ pub struct SemgrepProvider;
 
 #[async_trait]
 impl ScannerProvider for SemgrepProvider {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> &str {
         "semgrep"
     }
-    fn display_name(&self) -> &'static str {
+    fn display_name(&self) -> &str {
         "Semgrep"
+    }
+    fn config_fields(&self) -> Vec<crate::security_ir::ScannerConfigField> {
+        vec![
+crate::security_ir::ScannerConfigField { key:"config".into(),label:"Rule source".into(),kind:"text".into(),default_value:serde_json::json!("p/default"),options:vec![],help:Some("Local path, directory, or registry identifier. Engine and rule licenses are separate.".into()) },
+crate::security_ir::ScannerConfigField { key:"extraArgs".into(),label:"Additional structured args".into(),kind:"arguments".into(),default_value:serde_json::json!([]),options:vec![],help:Some("Use individual flags, for example --timeout=30.".into()) }
+]
     }
     fn capabilities(&self) -> ScannerCapabilities {
         ScannerCapabilities {

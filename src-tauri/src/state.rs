@@ -16,6 +16,35 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn provider(
+        &self,
+        id: &str,
+        request: &crate::security_ir::ScanRequest,
+    ) -> AppResult<Arc<dyn crate::scanners::ScannerProvider>> {
+        if let Some(provider) = self.scanners.get(id) {
+            return Ok(provider);
+        }
+        let manifests = crate::extensions::load_manifests(Some(&self.data_dir.join("extensions")))?;
+        let mut matching = manifests.into_iter().filter(|manifest| manifest.id == id);
+        let manifest = matching.next().ok_or_else(|| {
+            crate::error::AppError::InvalidInput(format!("Unsupported scanner: {id}"))
+        })?;
+        if matching.next().is_some() {
+            return Err(crate::error::AppError::InvalidInput(
+                "Duplicate extension identifiers are not executable.".into(),
+            ));
+        }
+        let digest = request
+            .scanner_configs
+            .get(id)
+            .and_then(|c| c.get("approvalDigest"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("");
+        Ok(Arc::new(crate::extensions::ExtensionProvider::approved(
+            manifest, digest,
+        )?))
+    }
+
     pub fn initialize(app: &AppHandle) -> AppResult<Self> {
         let data_dir = app.path().app_data_dir().map_err(|error| {
             crate::error::AppError::Workspace(format!(

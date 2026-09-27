@@ -52,3 +52,10 @@ Recommended defaults:
 - TruffleHog reports verified, unverified, unknown, and filtered-unverified detections unless verified-only mode is selected.
 - Bandit uses SARIF when installed and falls back to its JSON compatibility adapter.
 - Raw secret candidates are removed before persistence and UI rendering.
+
+
+## Investigation protocol update
+
+All providers now feed Security IR v1, layered fingerprints and identity-based triage. Their real CLI execution paths are retained. Machine JSON output from Bandit/TruffleHog is separated from human logs and has an explicit 128 MiB limit. The manual integration workflow runs these actual providers, outside mandatory PR checks.
+
+Declarative Gitleaks is opt-in and uses the same scan orchestration; see [extension runtime v1](extension-model.md). The example is external MIT tooling, not bundled scanner code. CodeQL remains user-provided and unchanged.

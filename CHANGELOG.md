@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.0.0 — 2026-09-27
+
+- Streaming SARIF import, bounded disk staging, global collision-safe matching, progress and transactional cancellation.
+- Hard-memory benchmark harness, Gitleaks extension smoke, desktop walkthrough and release evidence.
+- Hosted MSVC build with self-signed Authenticode application/installer signatures, public certificate and SHA-256 checksums.
+
+
+## Unreleased — Security IR and investigation workflow
+
+- Fixed Windows desktop test/app manifests: Common Controls v6 applies to library tests, with a build-local GNU resource override and MSVC manifest input.
+
+- Versioned Security IR v1 with provenance, typed trace kinds, fingerprints and lifecycle.
+- Native/exact/context/semantic matching with collision-safe identities and inherited triage.
+- New/Existing/Fixed/Reopened/Changed comparisons, SQLite pagination and lazy raw references.
+- Transactional schema 1 → 2 migration preserving Preview data and redacting legacy artifacts.
+- Thread-aware Trace Debugger with keyboard stepping and cross-file source navigation.
+- Reviewed declarative Gitleaks runtime, manifest/binary approval and explicit permission display.
+- Bounded machine output/logs, cancellation fixes, GitHub/Slack redaction fix.
+- Two-scan synthetic tutorial, normalization goldens, lifecycle/storage/UI regression tests and large-SARIF generator.
+- Linux/Windows CI, desktop-feature checks, dependency audit and manual real-scanner workflow.
+
+
 ## v0.1.0-preview
 
 Initial Preview MVP.

@@ -5,9 +5,20 @@ version = "1.0.0"
 
 [scanner]
 executable = "gitleaks"
+version_args = ["version"]
+
+[scan]
+args = ["dir", "{workspace}", "--no-banner", "--redact", "--report-format", "sarif", "--report-path", "{output}", "--exit-code", "0"]
+timeout_seconds = 900
+
+[permissions]
+workspace_read = true
+workspace_write = false
+network = false
 
 [output]
 format = "sarif"
+source = "file"
 
 [capabilities]
 sast = false

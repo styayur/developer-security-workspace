@@ -49,14 +49,85 @@ fn normalize_slug(value: &str) -> String {
     value.trim().to_ascii_lowercase()
 }
 
-fn normalize_path(value: &str) -> String {
-    value
-        .replace('\\', "/")
-        .trim_start_matches("./")
-        .to_ascii_lowercase()
+pub fn normalize_path(value: &str) -> String {
+    let replaced = value.replace('\\', "/");
+    let windows = value.contains('\\') || replaced.as_bytes().get(1) == Some(&b':');
+    let path = replaced
+        .split('/')
+        .filter(|part| !part.is_empty() && *part != ".")
+        .collect::<Vec<_>>()
+        .join("/");
+    if windows {
+        path.to_ascii_lowercase()
+    } else {
+        path
+    }
 }
 
-fn normalize_message(value: &str) -> String {
+pub fn hash_parts(parts: &[&str]) -> String {
+    let mut hasher = Hasher::new();
+    for part in parts {
+        hasher.update(part.as_bytes());
+        hasher.update(b"\0");
+    }
+    hasher.finalize().to_hex().to_string()
+}
+
+/// Only digests leave this function; source text is never fingerprint metadata.
+#[cfg(test)]
+pub fn context_fingerprint(finding: &Finding, source: &str) -> Option<String> {
+    context_from_lines(
+        finding,
+        &source.lines().map(str::to_owned).collect::<Vec<_>>(),
+    )
+}
+
+pub fn context_from_lines(finding: &Finding, lines: &[String]) -> Option<String> {
+    let line = finding.location.region.start_line.checked_sub(1)? as usize;
+    if line >= lines.len() {
+        return None;
+    }
+    let window = lines[line.saturating_sub(3)..=(line + 3).min(lines.len() - 1)]
+        .iter()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>().join(" "))
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join("\n");
+    if window.is_empty() {
+        return None;
+    }
+    Some(hash_parts(&[
+        "context/v2",
+        &finding.scanner_id,
+        &finding.rule_id,
+        &finding.location.logical_locations.join("/"),
+        &window,
+    ]))
+}
+
+pub fn structured(finding: &Finding) -> crate::security_ir::FindingFingerprints {
+    let mut cwe = finding.cwe.clone();
+    cwe.sort();
+    cwe.dedup();
+    // A CWE alone is not evidence of identity. Require a scanner-supplied symbol and the same rule.
+    let semantic = (!finding.location.logical_locations.is_empty()).then(|| {
+        hash_parts(&[
+            "semantic/v1",
+            &finding.scanner_id,
+            &finding.rule_id,
+            &cwe.join(","),
+            &finding.location.logical_locations.join("/"),
+        ])
+    });
+    crate::security_ir::FindingFingerprints {
+        native: finding.native_fingerprint.clone(),
+        exact: FingerprintEngine::for_finding(finding).workspace,
+        context: None,
+        semantic,
+    }
+}
+
+pub fn normalize_message(value: &str) -> String {
     let mut output = String::with_capacity(value.len());
     let mut in_digit = false;
     for character in value.chars() {

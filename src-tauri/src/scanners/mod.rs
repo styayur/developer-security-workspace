@@ -1,7 +1,7 @@
-mod bandit;
+pub(crate) mod bandit;
 mod semgrep;
 mod trivy;
-mod trufflehog;
+pub(crate) mod trufflehog;
 
 use crate::error::{AppError, AppResult};
 use crate::process::run_command;
@@ -51,14 +51,20 @@ impl ScanContext {
 
 #[async_trait]
 pub trait ScannerProvider: Send + Sync {
-    fn id(&self) -> &'static str;
-    fn display_name(&self) -> &'static str;
+    fn id(&self) -> &str;
+    fn display_name(&self) -> &str;
     fn capabilities(&self) -> ScannerCapabilities;
     fn license(&self) -> &'static str;
     fn project_url(&self) -> &'static str;
     fn install_command(&self) -> &'static str;
     fn description(&self) -> &'static str;
     fn known_commands(&self) -> &'static [&'static str];
+    fn timeout(&self) -> Duration {
+        Duration::from_secs(900)
+    }
+    fn config_fields(&self) -> Vec<crate::security_ir::ScannerConfigField> {
+        Vec::new()
+    }
     fn version_args(&self) -> &'static [&'static str];
 
     async fn detect(&self, configured_path: Option<&Path>) -> ScannerInstallation {
@@ -70,6 +76,7 @@ pub trait ScannerProvider: Send + Sync {
                     .ok()
                     .flatten();
                 ScannerInstallation {
+                    config_fields: self.config_fields(),
                     id: self.id().into(),
                     display_name: self.display_name().into(),
                     installed: true,
@@ -86,6 +93,7 @@ pub trait ScannerProvider: Send + Sync {
                 }
             }
             Err(error) => ScannerInstallation {
+                config_fields: self.config_fields(),
                 id: self.id().into(),
                 display_name: self.display_name().into(),
                 installed: false,
@@ -178,14 +186,22 @@ async fn command_version(executable: &Path, args: &[&str]) -> AppResult<Option<S
         .iter()
         .map(|value| value.to_string())
         .collect::<Vec<_>>();
+    let token = CancellationToken::new();
+    let timeout_token = token.clone();
+    let deadline = tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+        timeout_token.cancel();
+    });
     let output = run_command(
         executable,
         &args,
         executable.parent().unwrap_or_else(|| Path::new(".")),
-        CancellationToken::new(),
+        token,
         None,
     )
-    .await?;
+    .await;
+    deadline.abort();
+    let output = output?;
     let text = if output.stdout.trim().is_empty() {
         output.stderr
     } else {
@@ -329,6 +345,11 @@ pub fn validate_extra_args(args: &[String]) -> AppResult<()> {
 }
 
 pub fn parse_sarif_file(path: &Path) -> AppResult<SarifLog> {
+    if std::fs::metadata(path)?.len() > crate::sarif::MAX_SARIF_BYTES as u64 {
+        return Err(AppError::Sarif(
+            "SARIF exceeds the 128 MiB import limit.".into(),
+        ));
+    }
     let text = std::fs::read_to_string(path)?;
     parse_sarif(&text)
 }

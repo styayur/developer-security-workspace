@@ -1,3 +1,6 @@
+mod protocol;
+pub use protocol::*;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -111,6 +114,8 @@ pub struct Location {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct TraceStep {
+    #[serde(default)]
+    pub kind: TraceStepKind,
     pub index: usize,
     pub label: String,
     pub message: Option<String>,
@@ -183,6 +188,14 @@ pub struct Rule {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Finding {
+    #[serde(default)]
+    pub provenance: FindingProvenance,
+    #[serde(default)]
+    pub fingerprints: FindingFingerprints,
+    #[serde(default)]
+    pub lifecycle: FindingLifecycle,
+    #[serde(default)]
+    pub raw_reference: Option<RawReference>,
     pub id: String,
     pub scan_run_id: String,
     pub project_id: String,
@@ -209,6 +222,10 @@ pub struct Finding {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FindingListItem {
+    #[serde(default)]
+    pub identity_id: String,
+    #[serde(default)]
+    pub diff_class: DiffClass,
     pub id: String,
     pub scan_run_id: String,
     pub scanner_id: String,
@@ -266,9 +283,11 @@ pub struct LogEntry {
     pub message: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanRun {
+    #[serde(default = "security_ir_version")]
+    pub security_ir_version: u32,
     pub id: String,
     pub project_id: String,
     pub started_at: String,
@@ -280,6 +299,25 @@ pub struct ScanRun {
     pub finding_count: usize,
     pub duration_ms: Option<u64>,
     pub source: String,
+}
+
+impl Default for ScanRun {
+    fn default() -> Self {
+        Self {
+            security_ir_version: SECURITY_IR_VERSION,
+            id: String::new(),
+            project_id: String::new(),
+            started_at: String::new(),
+            finished_at: None,
+            git_branch: None,
+            git_commit: None,
+            status: ScanStatus::default(),
+            scanners: Vec::new(),
+            finding_count: 0,
+            duration_ms: None,
+            source: String::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -298,6 +336,7 @@ pub struct ScannerCapabilities {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScannerInstallation {
+    pub config_fields: Vec<ScannerConfigField>,
     pub id: String,
     pub display_name: String,
     pub installed: bool,
@@ -349,6 +388,12 @@ impl Default for ScanRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanDiff {
+    pub changed: Vec<FindingListItem>,
+    pub reopened: Vec<FindingListItem>,
+    pub changed_count: usize,
+    pub reopened_count: usize,
+    pub offset: usize,
+    pub limit: usize,
     pub current_run_id: String,
     pub previous_run_id: String,
     pub new: Vec<FindingListItem>,
@@ -412,6 +457,11 @@ pub struct AppSetting {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtensionManifest {
+    pub scan: ExtensionScan,
+    pub permissions: ExtensionPermissions,
+    pub approval_digest: String,
+    pub resolved_executable: Option<String>,
+    pub runnable: bool,
     pub schema_version: u32,
     pub id: String,
     pub name: String,
@@ -427,11 +477,13 @@ pub struct ExtensionManifest {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExtensionScanner {
     pub executable: String,
+    pub version_args: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ExtensionOutput {
     pub format: String,
+    pub source: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -468,4 +520,29 @@ pub struct ScanProgressEvent {
     pub message: String,
     pub elapsed_ms: u64,
     pub finding_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionScan {
+    pub args: Vec<String>,
+    pub timeout_seconds: u64,
+}
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionPermissions {
+    pub workspace_read: bool,
+    pub workspace_write: bool,
+    pub network: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScannerConfigField {
+    pub key: String,
+    pub label: String,
+    pub kind: String,
+    pub default_value: serde_json::Value,
+    pub options: Vec<String>,
+    pub help: Option<String>,
 }

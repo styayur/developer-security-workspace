@@ -3,7 +3,7 @@ use super::{
     ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
-use crate::process::run_command;
+use crate::process::run_command_data;
 use crate::sarif::model::{
     SarifArtifactLocation, SarifLocation, SarifLog, SarifMessage, SarifPhysicalLocation,
     SarifRegion, SarifReportingDescriptor, SarifResult, SarifRun, SarifTool, SarifToolComponent,
@@ -17,11 +17,14 @@ pub struct TruffleHogProvider;
 
 #[async_trait]
 impl ScannerProvider for TruffleHogProvider {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> &str {
         "trufflehog"
     }
-    fn display_name(&self) -> &'static str {
+    fn display_name(&self) -> &str {
         "TruffleHog"
+    }
+    fn config_fields(&self) -> Vec<crate::security_ir::ScannerConfigField> {
+        vec![crate::security_ir::ScannerConfigField { key:"verifiedOnly".into(),label:"Only show verified credentials".into(),kind:"boolean".into(),default_value:serde_json::json!(false),options:vec![],help:Some("Raw candidates are removed by the adapter. Verification may contact the credential issuer.".into()) }]
     }
     fn capabilities(&self) -> ScannerCapabilities {
         ScannerCapabilities {
@@ -69,10 +72,17 @@ impl ScannerProvider for TruffleHogProvider {
         {
             args.push("--only-verified".into());
         }
+        if config
+            .get("noVerification")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            args.push("--no-verification".into());
+        }
         args.extend(extra);
         args.push(request.workspace_root.clone());
         context.log("info", format!("Launching {}", executable.display()));
-        let output = run_command(
+        let output = run_command_data(
             &executable,
             &args,
             Path::new(&request.workspace_root),

@@ -1,7 +1,14 @@
 use crate::error::{AppError, AppResult};
 use crate::sarif::model::SarifLog;
 
+pub const MAX_SARIF_BYTES: usize = 128 * 1024 * 1024;
+
 pub fn parse_sarif(input: &str) -> AppResult<SarifLog> {
+    if input.len() > MAX_SARIF_BYTES {
+        return Err(AppError::Sarif(
+            "SARIF exceeds the 128 MiB import limit.".into(),
+        ));
+    }
     if input.trim().is_empty() {
         return Err(AppError::Sarif("The file is empty.".into()));
     }

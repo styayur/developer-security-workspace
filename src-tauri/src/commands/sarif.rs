@@ -1,62 +1,80 @@
 use crate::commands::blocking;
 use crate::error::{AppError, AppResult};
-use crate::sarif::{normalize_log, parse_sarif};
-use crate::security_ir::{
-    Finding, ImportResult, LogEntry, ScanStatus, ScannerRun, ScannerRunStatus, Severity,
-};
+use crate::security_ir::{ImportResult, ScanStatus, Severity};
 use crate::state::AppState;
-use crate::workspace::{detect_project, ensure_demo_workspace};
-use chrono::Utc;
+use crate::workspace::detect_project;
 use serde_json::json;
+#[cfg(test)]
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, State};
 use uuid::Uuid;
 
-const BUILTIN_FIXTURES: &[(&str, &str)] = &[
-    (
-        "semgrep-example.sarif",
-        include_str!("../../../fixtures/sarif/semgrep-example.sarif"),
-    ),
-    (
-        "trivy-example.sarif",
-        include_str!("../../../fixtures/sarif/trivy-example.sarif"),
-    ),
-    (
-        "trufflehog-example.sarif",
-        include_str!("../../../fixtures/sarif/trufflehog-example.sarif"),
-    ),
-    (
-        "bandit-example.sarif",
-        include_str!("../../../fixtures/sarif/bandit-example.sarif"),
-    ),
-    (
-        "codeflow-example.sarif",
-        include_str!("../../../fixtures/sarif/codeflow-example.sarif"),
-    ),
-    (
-        "multi-run-example.sarif",
-        include_str!("../../../fixtures/sarif/multi-run-example.sarif"),
-    ),
-];
+#[tauri::command]
+pub fn prepare_import(state: State<'_, AppState>) -> AppResult<String> {
+    let id = Uuid::new_v4().to_string();
+    state
+        .cancel_tokens
+        .lock()
+        .map_err(|_| AppError::Process("Cancellation state unavailable".into()))?
+        .insert(
+            format!("import:{id}"),
+            tokio_util::sync::CancellationToken::new(),
+        );
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn cancel_import(state: State<'_, AppState>, import_id: String) -> AppResult<()> {
+    if let Some(token) = state
+        .cancel_tokens
+        .lock()
+        .map_err(|_| AppError::Process("Cancellation state unavailable".into()))?
+        .get(&format!("import:{import_id}"))
+    {
+        token.cancel();
+    }
+    Ok(())
+}
 
 #[tauri::command]
 pub async fn import_sarif(
+    app: AppHandle,
     state: State<'_, AppState>,
     path: String,
     project_id: Option<String>,
     workspace_root: Option<String>,
+    import_id: Option<String>,
 ) -> AppResult<ImportResult> {
     let state = state.inner().clone();
-    blocking(move || {
-        import_path(
-            &state,
+    let id = import_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+    let key = format!("import:{id}");
+    let cancel = state
+        .cancel_tokens
+        .lock()
+        .map_err(|_| AppError::Process("Cancellation state unavailable".into()))?
+        .entry(key.clone())
+        .or_default()
+        .clone();
+    let worker = state.clone();
+    let result = blocking(move || {
+        import_path_with_cancel(
+            &worker,
             Path::new(&path),
             project_id.as_deref(),
             workspace_root.as_deref(),
+            &cancel,
+            &|mut progress| {
+                progress.import_id = id.clone();
+                let _ = app.emit("import://progress", progress);
+            },
         )
     })
-    .await
+    .await;
+    if let Ok(mut tokens) = state.cancel_tokens.lock() {
+        tokens.remove(&key);
+    }
+    result
 }
 
 #[tauri::command]
@@ -67,32 +85,9 @@ pub async fn open_demo_workspace(
     let state = state.inner().clone();
     let demo_root = state.data_dir.join("demo-workspace");
     blocking(move || {
-        ensure_demo_workspace(&demo_root)?;
-        let project = state.database.open_project(&detect_project(&demo_root)?)?;
-        let run = state
-            .database
-            .create_scan_run(&project.id, "demo_fixture")?;
-        let mut findings = Vec::new();
-        let mut warnings = Vec::new();
-        for (name, source) in BUILTIN_FIXTURES {
-            match parse_sarif(source)
-                .and_then(|log| normalize_log(&log, &demo_root, &project.id, &run.id))
-            {
-                Ok(mut normalized) => findings.append(&mut normalized),
-                Err(error) => warnings.push(format!("{name}: {error}")),
-            }
-        }
-        state.database.insert_findings(&findings)?;
-        save_aggregate_scanner_runs(&state, &run.id, &findings)?;
-        let scan_run = state
-            .database
-            .finish_scan_run(&run.id, ScanStatus::Completed)?;
-        let _ = app.emit("scan://completed", &scan_run);
-        Ok(ImportResult {
-            scan_run,
-            imported_findings: findings.len(),
-            warnings,
-        })
+        let result = crate::workspace::demo::open(&state.database, &demo_root)?;
+        let _ = app.emit("scan://completed", &result.scan_run);
+        Ok(result)
     })
     .await
 }
@@ -156,88 +151,66 @@ pub async fn full_sarif(
     .await
 }
 
+#[cfg(test)]
 fn import_path(
     state: &AppState,
     path: &Path,
     project_id: Option<&str>,
     workspace_root: Option<&str>,
 ) -> AppResult<ImportResult> {
+    import_path_with_cancel(
+        state,
+        path,
+        project_id,
+        workspace_root,
+        &tokio_util::sync::CancellationToken::new(),
+        &|_| {},
+    )
+}
+
+fn import_path_with_cancel(
+    state: &AppState,
+    path: &Path,
+    project_id: Option<&str>,
+    workspace_root: Option<&str>,
+    cancel: &tokio_util::sync::CancellationToken,
+    progress: &dyn Fn(crate::sarif::streaming::ImportProgress),
+) -> AppResult<ImportResult> {
+    crate::sarif::streaming::check_cancel(cancel)?;
     if !path.is_file() {
-        return Err(AppError::InvalidInput(format!(
-            "SARIF file does not exist: {}",
-            path.display()
-        )));
+        return Err(AppError::InvalidInput("SARIF file does not exist".into()));
     }
-    let source_text = std::fs::read_to_string(path)?;
-    let log = parse_sarif(&source_text)?;
-    let project = if let Some(project_id) = project_id {
-        state.database.get_project(project_id)?
+    let project = if let Some(id) = project_id {
+        state.database.get_project(id)?
     } else {
         let root = workspace_root
             .map(PathBuf::from)
             .or_else(|| path.parent().map(Path::to_path_buf))
-            .ok_or_else(|| {
-                AppError::InvalidInput(
-                    "Unable to infer a workspace root for this SARIF file.".into(),
-                )
-            })?;
+            .ok_or_else(|| AppError::InvalidInput("Unable to infer workspace root".into()))?;
         state.database.open_project(&detect_project(&root)?)?
     };
-    let workspace = PathBuf::from(&project.path);
     let run = state
         .database
         .create_scan_run(&project.id, "sarif_import")?;
-    let findings = normalize_log(&log, &workspace, &project.id, &run.id)?;
-    state.database.insert_findings(&findings)?;
-    state
-        .database
-        .insert_scan_artifact(&run.id, "import", "sarif", &source_text)?;
-    save_aggregate_scanner_runs(state, &run.id, &findings)?;
-    let scan_run = state
-        .database
-        .finish_scan_run(&run.id, ScanStatus::Completed)?;
-    Ok(ImportResult {
-        scan_run,
-        imported_findings: findings.len(),
-        warnings: Vec::new(),
-    })
-}
-
-fn save_aggregate_scanner_runs(
-    state: &AppState,
-    scan_run_id: &str,
-    findings: &[Finding],
-) -> AppResult<()> {
-    let mut groups: HashMap<(String, String), usize> = HashMap::new();
-    for finding in findings {
-        *groups
-            .entry((finding.scanner_id.clone(), finding.scanner_name.clone()))
-            .or_default() += 1;
+    match crate::storage::streaming::import(&state.database, path, &project, &run, cancel, progress)
+    {
+        Ok(count) => Ok(ImportResult {
+            scan_run: state.database.get_scan_run(&run.id)?,
+            imported_findings: count,
+            warnings: Vec::new(),
+        }),
+        Err(error) => {
+            state.database.finish_scan_run(
+                &run.id,
+                if cancel.is_cancelled() {
+                    ScanStatus::Cancelled
+                } else {
+                    ScanStatus::Failed
+                },
+            )?;
+            Err(error)
+        }
     }
-    if groups.is_empty() {
-        groups.insert(("import".into(), "SARIF Import".into()), 0);
-    }
-    for ((scanner_id, scanner_name), count) in groups {
-        let now = Utc::now().to_rfc3339();
-        state.database.upsert_scanner_run(&ScannerRun {
-            id: Uuid::new_v4().to_string(),
-            scan_run_id: scan_run_id.to_string(),
-            scanner_id,
-            scanner_name,
-            status: ScannerRunStatus::Completed,
-            version: None,
-            started_at: now.clone(),
-            finished_at: Some(now),
-            duration_ms: Some(0),
-            error: None,
-            logs: vec![LogEntry {
-                timestamp: Utc::now().to_rfc3339(),
-                stream: "info".into(),
-                message: format!("Imported {count} normalized finding(s) from SARIF."),
-            }],
-        })?;
-    }
-    Ok(())
 }
 
 fn build_export_document(findings: &[crate::security_ir::FindingListItem]) -> serde_json::Value {
@@ -295,7 +268,68 @@ fn build_export_document(findings: &[crate::security_ir::FindingListItem]) -> se
     })
 }
 
-#[allow(dead_code)]
-fn fixture_sources() -> Vec<(&'static str, &'static str)> {
-    BUILTIN_FIXTURES.to_vec()
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    fn state(root: &Path) -> AppState {
+        AppState {
+            database: Arc::new(crate::storage::Database::new(&root.join("db")).unwrap()),
+            scanners: Arc::new(crate::scanners::ScannerRegistry::new()),
+            data_dir: root.to_path_buf(),
+            cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
+        }
+    }
+
+    fn report(path: &Path, results: serde_json::Value) {
+        std::fs::write(
+            path,
+            serde_json::to_vec(&json!({
+                "version":"2.1.0", "runs":[{"tool":{"driver":{"name":"Demo"}},"results":results}]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn empty_import_retains_coverage_and_marks_absence_fixed() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = state(dir.path());
+        let path = dir.path().join("input.sarif");
+        report(
+            &path,
+            json!([{"ruleId":"demo.rule","message":{"text":"Synthetic finding"}}]),
+        );
+        let first = import_path(&state, &path, None, None).unwrap();
+        report(&path, json!([]));
+        let second = import_path(&state, &path, Some(&first.scan_run.project_id), None).unwrap();
+        let diff = state
+            .database
+            .scan_diff(
+                &first.scan_run.project_id,
+                &second.scan_run.id,
+                Some(&first.scan_run.id),
+            )
+            .unwrap()
+            .unwrap();
+        assert_eq!(diff.fixed_count, 1);
+        assert_eq!(second.scan_run.scanners[0].scanner_id, "demo");
+    }
+
+    #[test]
+    fn failed_import_does_not_leave_a_running_scan() {
+        let dir = tempfile::tempdir().unwrap();
+        let state = state(dir.path());
+        let path = dir.path().join("input.sarif");
+        report(&path, json!([]));
+        let connection = rusqlite::Connection::open(dir.path().join("db")).unwrap();
+        connection.execute_batch("CREATE TRIGGER fail_artifact BEFORE INSERT ON scan_artifacts BEGIN SELECT RAISE(ABORT,'test import failure'); END;").unwrap();
+        assert!(import_path(&state, &path, None, None).is_err());
+        let status: String = connection
+            .query_row("SELECT status FROM scan_runs", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(status, "failed");
+    }
 }

@@ -1,40 +1,53 @@
 name: CI
-
 on:
   push:
     branches: [main]
   pull_request:
-
+  workflow_dispatch:
 permissions:
   contents: read
-
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  frontend:
-    runs-on: ubuntu-latest
+  frontend-core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 12.4.2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-
-  rust-core:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked
+      - name: Windows desktop tests
+        if: runner.os == 'Windows'
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --features desktop
+      - name: Windows desktop clippy
+        if: runner.os == 'Windows'
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --features desktop --all-targets -- -D warnings
+      - name: Build Windows installer on main or manual runs
+        if: runner.os == 'Windows' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+        run: pnpm tauri build
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push')
+        with:
+          name: windows-unsigned-preview
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

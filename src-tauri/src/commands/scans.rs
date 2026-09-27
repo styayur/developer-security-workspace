@@ -53,11 +53,7 @@ pub async fn start_scan(
         }
     }
     for scanner_id in &request.scanner_ids {
-        if state.scanners.get(scanner_id).is_none() {
-            return Err(AppError::InvalidInput(format!(
-                "Unsupported scanner provider: {scanner_id}"
-            )));
-        }
+        state.provider(scanner_id, &request)?;
         if let Some(config) = state
             .database
             .get_scanner_config(&request.project_id, scanner_id)?
@@ -82,9 +78,14 @@ pub async fn start_scan(
             }
         }
     }
-    let run = state
-        .database
-        .create_scan_run(&request.project_id, "scan")?;
+    let run = state.database.create_scan_run(
+        &request.project_id,
+        if request.mode == "changed" {
+            "scan_changed"
+        } else {
+            "scan"
+        },
+    )?;
     let cancellation = CancellationToken::new();
     state
         .cancel_tokens
@@ -92,7 +93,7 @@ pub async fn start_scan(
         .map_err(|_| AppError::Process("Cancellation registry is unavailable.".into()))?
         .insert(run.id.clone(), cancellation.clone());
     for scanner_id in &request.scanner_ids {
-        let provider = state.scanners.get(scanner_id).expect("validated scanner");
+        let provider = state.provider(scanner_id, &request)?;
         let now = Utc::now().to_rfc3339();
         state.database.upsert_scanner_run(&ScannerRun {
             id: Uuid::new_v4().to_string(),
@@ -199,9 +200,9 @@ async fn run_scanner(
     scanner_id: String,
     cancellation: CancellationToken,
 ) -> bool {
-    let provider = match state.scanners.get(&scanner_id) {
-        Some(provider) => provider,
-        None => return false,
+    let provider = match state.provider(&scanner_id, &request) {
+        Ok(provider) => provider,
+        Err(_) => return false,
     };
     let scanner_run_id = find_queued_scanner_run(&state, &run.id, &scanner_id)
         .unwrap_or_else(|| Uuid::new_v4().to_string());
@@ -228,9 +229,9 @@ async fn run_scanner(
         }
     });
     let mut context = ScanContext {
-        cancel: cancellation.clone(),
+        cancel: cancellation.child_token(),
         logs: Some(log_tx),
-        timeout: Duration::from_secs(15 * 60),
+        timeout: provider.timeout(),
     };
     emit_progress(
         &app,
@@ -242,11 +243,21 @@ async fn run_scanner(
         0,
     );
     let scan_started = Instant::now();
-    let scan_result =
-        tokio::time::timeout(context.timeout, provider.scan(&request, &context)).await;
+    let scan_result = {
+        let future = provider.scan(&request, &context);
+        tokio::pin!(future);
+        tokio::select! {
+            result=&mut future => Ok(result),
+            _=tokio::time::sleep(context.timeout) => {
+                context.cancel.cancel();
+                let _=tokio::time::timeout(Duration::from_secs(5),&mut future).await;
+                Err(())
+            }
+        }
+    };
     let elapsed = scan_started.elapsed().as_millis() as u64;
     context.logs = None;
-    let _ = log_task.await;
+    let _ = tokio::time::timeout(Duration::from_secs(5), log_task).await;
     let logs = log_store.lock().await.clone();
     let (status, error, finding_count) = match scan_result {
         Err(_) => {
@@ -254,7 +265,10 @@ async fn run_scanner(
             context.cancel.cancel();
             (
                 ScannerRunStatus::Failed,
-                Some("Scanner timed out after 15 minutes.".into()),
+                Some(format!(
+                    "Scanner timed out after {} seconds.",
+                    context.timeout.as_secs()
+                )),
                 0,
             )
         }
@@ -280,6 +294,26 @@ async fn run_scanner(
                     &scanner_id,
                 ) {
                     Ok(mut normalized) => {
+                        match serde_json::to_string(log)
+                            .map_err(AppError::from)
+                            .and_then(|raw| {
+                                state.database.insert_scan_artifact(
+                                    &run.id,
+                                    &scanner_id,
+                                    "sarif",
+                                    &raw,
+                                )
+                            }) {
+                            Ok(artifact) => {
+                                for finding in &mut normalized {
+                                    if let Some(reference) = &mut finding.raw_reference {
+                                        reference.artifact_id = artifact.clone();
+                                        finding.raw_sarif = serde_json::Value::Null;
+                                    }
+                                }
+                            }
+                            Err(error) => storage_error = Some(error.to_string()),
+                        }
                         if request.mode == "changed" {
                             normalized.retain(|finding| {
                                 changed_files.contains(
@@ -294,12 +328,6 @@ async fn run_scanner(
                         findings.append(&mut normalized);
                     }
                     Err(error) => storage_error = Some(error.to_string()),
-                }
-                if let Ok(raw) = serde_json::to_string(log) {
-                    let _ =
-                        state
-                            .database
-                            .insert_scan_artifact(&run.id, &scanner_id, "sarif", &raw);
                 }
             }
             let count = findings.len();

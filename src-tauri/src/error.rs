@@ -4,6 +4,8 @@ pub type AppResult<T> = Result<T, AppError>;
 
 #[derive(Debug, Error)]
 pub enum AppError {
+    #[error("Import cancelled by user.")]
+    Cancelled,
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
     #[error("Database error: {0}")]

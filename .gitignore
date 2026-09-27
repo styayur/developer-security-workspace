@@ -13,3 +13,7 @@ vite.config.d.ts
 src-tauri/target-*
 src-tauri/gen
 work/
+
+*.pfx
+*.p12
+target-*/

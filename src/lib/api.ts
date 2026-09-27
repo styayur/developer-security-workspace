@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { openPath, openUrl } from "@tauri-apps/plugin-opener";
-import type { ComponentInfo, DashboardSummary, ExtensionManifest, Finding, FindingFilters, FindingListItem, ImportResult, LogEntry, Project, RecentProject, Rule, ScanDiff, ScanProgressEvent, ScanRequest, ScanRun, ScannerConfig, ScannerInstallation, SourceFile } from "../types/domain";
+import type { ComponentInfo, DashboardSummary, ExtensionManifest, Finding, FindingFilters, FindingListItem, FindingPage, ImportResult, LogEntry, Project, RecentProject, Rule, ScanDiff, ScanProgressEvent, ScanRequest, ScanRun, ScannerConfig, ScannerInstallation, SourceFile } from "../types/domain";
 
 export const isDesktopRuntime = () => "__TAURI_INTERNALS__" in window;
 export const api = {
@@ -11,14 +11,19 @@ export const api = {
   recentProjects: (limit = 12) => invoke<RecentProject[]>("recent_projects", { limit }),
   readSource: (projectId: string, path: string) => invoke<SourceFile>("read_source", { projectId, path }),
   listFindings: (filters: FindingFilters) => invoke<FindingListItem[]>("list_findings", { filters }),
+  findingPage: (filters: FindingFilters, offset = 0, limit = 100) => invoke<FindingPage>("finding_page", { filters, offset, limit }),
+  findingScanners: (projectId: string) => invoke<string[]>("finding_scanners", { projectId }),
+  findingNavigation: (findingId: string) => invoke<{ previous?: string; next?: string; total: number; position: number }>("finding_navigation", { findingId }),
   getFinding: (findingId: string) => invoke<Finding>("get_finding", { findingId }),
   updateTriage: (findingId: string, status: string, note?: string) => invoke<Finding>("update_triage", { update: { findingId, status, note } }),
   dashboard: (projectId: string) => invoke<DashboardSummary>("dashboard", { projectId }),
   listRules: (projectId: string) => invoke<Rule[]>("list_rules", { projectId }),
   listScanRuns: (projectId: string, limit = 100) => invoke<ScanRun[]>("list_scan_runs", { projectId, limit }),
   getScanRun: (scanRunId: string) => invoke<ScanRun>("get_scan_run", { scanRunId }),
-  scanDiff: (projectId: string, currentRunId: string, previousRunId?: string) => invoke<ScanDiff | null>("scan_diff", { projectId, currentRunId, previousRunId }),
-  importSarif: (path: string, projectId?: string, workspaceRoot?: string) => invoke<ImportResult>("import_sarif", { path, projectId, workspaceRoot }),
+  scanDiff: (projectId: string, currentRunId: string, previousRunId?: string, offset = 0, limit = 100) => invoke<ScanDiff | null>("scan_diff", { projectId, currentRunId, previousRunId, offset, limit }),
+  prepareImport: () => invoke<string>("prepare_import"),
+  cancelImport: (importId: string) => invoke<void>("cancel_import", { importId }),
+  importSarif: (path: string, projectId?: string, workspaceRoot?: string, importId?: string) => invoke<ImportResult>("import_sarif", { path, projectId, workspaceRoot, importId }),
   openDemoWorkspace: () => invoke<ImportResult>("open_demo_workspace"),
   exportSarif: (projectId: string, destination: string) => invoke<string>("export_sarif", { projectId, destination }),
   fullSarif: (scanRunId: string) => invoke<Record<string, unknown>>("full_sarif", { scanRunId }),

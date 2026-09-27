@@ -4,12 +4,13 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  windows-preview:
+  windows-msvc:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,21 +31,73 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
-      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-      - run: pnpm tauri build
+      - run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --features desktop --all-targets -- -D warnings
+      - run: cargo test --manifest-path src-tauri/Cargo.toml --locked --features desktop
+      - name: Import self-signed publisher certificate
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:WINDOWS_CERTIFICATE -or -not $env:WINDOWS_CERTIFICATE_PASSWORD) { throw 'Signing secrets are required' }
+          $pfx = Join-Path $env:RUNNER_TEMP 'dsw-release.pfx'
+          try {
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+            $password = ConvertTo-SecureString $env:WINDOWS_CERTIFICATE_PASSWORD -AsPlainText -Force
+            $cert = Import-PfxCertificate -FilePath $pfx -CertStoreLocation Cert:\CurrentUser\My -Password $password
+            $expected = [Security.Cryptography.X509Certificates.X509Certificate2]::new((Resolve-Path docs/release/DSW-self-signed.cer).Path)
+            if ($cert.Thumbprint -ne $expected.Thumbprint) { throw 'Publisher certificate mismatch' }
+            "DSW_SIGNING_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
+          } finally {
+            if (Test-Path -LiteralPath $pfx) { Remove-Item -LiteralPath $pfx }
+          }
+          $script = Join-Path $env:GITHUB_WORKSPACE 'scripts/sign-windows.ps1'
+          @{bundle=@{windows=@{signCommand=@{cmd='pwsh';args=@('-NoProfile','-File',$script,'%1')}}}} | ConvertTo-Json -Depth 8 | Set-Content work-signing.json
+      - name: Build signed MSVC installer
+        run: pnpm tauri build --config work-signing.json
+      - name: Verify application and installer signatures
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./scripts/verify-windows-signature.ps1 -Path src-tauri/target/release/developer-security-workspace.exe -CertificatePath docs/release/DSW-self-signed.cer
+          Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | ForEach-Object {
+            ./scripts/verify-windows-signature.ps1 -Path $_.FullName -CertificatePath docs/release/DSW-self-signed.cer
+          }
+      - name: Remove runner private key
+        if: always()
+        shell: pwsh
+        run: |
+          if ($env:DSW_SIGNING_THUMBPRINT) {
+            $path = "Cert:\CurrentUser\My\$env:DSW_SIGNING_THUMBPRINT"
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -DeleteKey }
+          }
       - name: Generate checksums
         shell: pwsh
         run: |
-          Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" | ForEach-Object {
+          $ErrorActionPreference = "Stop"
+          $installers = @(Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" -ErrorAction Stop)
+          if ($installers.Count -eq 0) { throw "No validated NSIS installer was produced" }
+          @($installers) + @(Get-Item docs/release/DSW-self-signed.cer) | ForEach-Object {
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
             "$hash  $($_.Name)"
           } | Set-Content -LiteralPath "SHA256SUMS.txt" -Encoding utf8
       - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          prerelease: true
+          fail_on_unmatched_files: true
+          prerelease: false
           generate_release_notes: true
           body_path: RELEASE_NOTES.md
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
+            SHA256SUMS.txt
+            docs/release/DSW-self-signed.cer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-msvc-self-signed
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/nsis/*.exe
+            docs/release/DSW-self-signed.cer
             SHA256SUMS.txt

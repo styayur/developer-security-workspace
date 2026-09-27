@@ -1,0 +1,19 @@
+{
+  "results": [
+    {
+      "test_id": "B602",
+      "test_name": "shell_injection",
+      "issue_severity": "HIGH",
+      "issue_confidence": "HIGH",
+      "issue_text": "subprocess call with shell=True",
+      "filename": "scripts/task.py",
+      "line_number": 7,
+      "col_offset": 12,
+      "end_col_offset": 30,
+      "issue_cwe": {
+        "id": 78
+      },
+      "more_info": "https://example.invalid/B602"
+    }
+  ]
+}

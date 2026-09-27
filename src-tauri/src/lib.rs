@@ -9,6 +9,7 @@ mod error;
 mod extensions;
 mod fingerprint;
 mod licenses;
+mod matching;
 mod process;
 mod sarif;
 mod scanners;
@@ -49,6 +50,9 @@ pub fn run() {
             commands::project::recent_projects,
             commands::project::read_source,
             commands::findings::list_findings,
+            commands::findings::finding_page,
+            commands::findings::finding_navigation,
+            commands::findings::finding_scanners,
             commands::findings::get_finding,
             commands::findings::update_triage,
             commands::findings::dashboard,
@@ -57,6 +61,8 @@ pub fn run() {
             commands::findings::get_scan_run,
             commands::findings::scan_diff,
             commands::sarif::import_sarif,
+            commands::sarif::prepare_import,
+            commands::sarif::cancel_import,
             commands::sarif::open_demo_workspace,
             commands::sarif::export_sarif,
             commands::sarif::full_sarif,
@@ -151,7 +157,7 @@ mod integration_tests {
                 "trufflehog" => {
                     scanner_configs.insert(
                         scanner_id.to_string(),
-                        serde_json::json!({ "verifiedOnly": false }),
+                        serde_json::json!({ "verifiedOnly": false, "noVerification": true }),
                     );
                 }
                 "bandit" => {
@@ -246,3 +252,6 @@ mod integration_tests {
         assert_eq!(detail.location.region.start_line, 8);
     }
 }
+
+#[cfg(test)]
+mod regression_tests;

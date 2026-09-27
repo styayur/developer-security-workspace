@@ -13,7 +13,7 @@ pub async fn list_findings(
     filters: FindingFilters,
 ) -> AppResult<Vec<FindingListItem>> {
     let state = state.inner().clone();
-    blocking(move || state.database.list_findings(&filters)).await
+    blocking(move || Ok(state.database.finding_page(&filters, 0, 500)?.items)).await
 }
 
 #[tauri::command]
@@ -75,12 +75,51 @@ pub async fn scan_diff(
     project_id: String,
     current_run_id: String,
     previous_run_id: Option<String>,
+    offset: Option<usize>,
+    limit: Option<usize>,
 ) -> AppResult<Option<ScanDiff>> {
+    let state = state.inner().clone();
+    blocking(move || {
+        state.database.scan_diff_page(
+            &project_id,
+            &current_run_id,
+            previous_run_id.as_deref(),
+            offset.unwrap_or(0),
+            limit.unwrap_or(100),
+        )
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn finding_page(
+    state: State<'_, AppState>,
+    filters: FindingFilters,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> AppResult<crate::security_ir::FindingPage> {
     let state = state.inner().clone();
     blocking(move || {
         state
             .database
-            .scan_diff(&project_id, &current_run_id, previous_run_id.as_deref())
+            .finding_page(&filters, offset.unwrap_or(0), limit.unwrap_or(100))
     })
     .await
+}
+#[tauri::command]
+pub async fn finding_scanners(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> AppResult<Vec<String>> {
+    let state = state.inner().clone();
+    blocking(move || state.database.finding_scanners(&project_id)).await
+}
+
+#[tauri::command]
+pub async fn finding_navigation(
+    state: State<'_, AppState>,
+    finding_id: String,
+) -> AppResult<serde_json::Value> {
+    let state = state.inner().clone();
+    blocking(move || state.database.finding_navigation(&finding_id)).await
 }

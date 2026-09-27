@@ -1,0 +1,52 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "Tutorial IaC",
+          "version": "1.0",
+          "rules": [
+            {
+              "id": "demo.iac.public",
+              "shortDescription": {
+                "text": "Synthetic public storage configuration"
+              },
+              "properties": {
+                "tags": [
+                  "iac",
+                  "CWE-284"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "demo.iac.public",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": {
+            "text": "Demo misconfiguration: public_access is enabled"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "infra/main.tf"
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 3,
+                  "endLine": 3,
+                  "endColumn": 23
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -3,7 +3,7 @@ use super::{
     validate_extra_args, ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
-use crate::process::run_command;
+use crate::process::{run_command, run_command_data};
 use crate::sarif::model::{
     SarifArtifactLocation, SarifLocation, SarifLog, SarifMessage, SarifPhysicalLocation,
     SarifRegion, SarifReportingDescriptor, SarifResult, SarifRun, SarifTool, SarifToolComponent,
@@ -18,10 +18,10 @@ pub struct BanditProvider;
 
 #[async_trait]
 impl ScannerProvider for BanditProvider {
-    fn id(&self) -> &'static str {
+    fn id(&self) -> &str {
         "bandit"
     }
-    fn display_name(&self) -> &'static str {
+    fn display_name(&self) -> &str {
         "Bandit"
     }
     fn capabilities(&self) -> ScannerCapabilities {
@@ -82,6 +82,9 @@ impl ScannerProvider for BanditProvider {
                 return Ok(vec![log]);
             }
         }
+        if context.cancel.is_cancelled() {
+            return Err(AppError::Process("Scan cancelled by user.".into()));
+        }
         context.log(
             "stderr",
             "SARIF formatter unavailable. Using Bandit JSON compatibility adapter.",
@@ -93,7 +96,7 @@ impl ScannerProvider for BanditProvider {
             "json".into(),
         ];
         json_args.extend(extra);
-        let output = run_command(
+        let output = run_command_data(
             &executable,
             &json_args,
             Path::new(&request.workspace_root),

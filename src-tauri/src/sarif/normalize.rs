@@ -7,8 +7,8 @@ use crate::sarif::model::{
 use crate::sarif::path_mapper::{map_artifact_uri, relative_display};
 use crate::secret_redaction::SecretRedactor;
 use crate::security_ir::{
-    CodeFlow, Finding, FindingCategory, FindingStatus, Fix, FixReplacement, Location, Region,
-    Severity, Taxonomy, ThreadFlow, TraceStep,
+    CodeFlow, Finding, FindingCategory, FindingProvenance, FindingStatus, Fix, FixReplacement,
+    Location, RawReference, Region, Severity, Taxonomy, ThreadFlow, TraceStep, TraceStepKind,
 };
 use regex::Regex;
 use serde_json::Value;
@@ -48,7 +48,8 @@ fn normalize_inner(
     scanner_override: Option<&str>,
 ) -> AppResult<Vec<Finding>> {
     let mut findings = Vec::new();
-    for run in &log.runs {
+    let mut sources = std::collections::HashMap::new();
+    for (run_index, run) in log.runs.iter().enumerate() {
         let scanner_name = if run.tool.driver.name.trim().is_empty() {
             "Unknown scanner".to_string()
         } else {
@@ -96,14 +97,16 @@ fn normalize_inner(
                 .iter()
                 .map(|fix| parse_fix(run, workspace_root, fix))
                 .collect::<Vec<_>>();
-            let cwe = extract_cwes(result, descriptor);
+            let mut cwe = extract_cwes(result, descriptor);
+            for taxon in &result.taxa {
+                if let Some(id) = &taxon.id {
+                    collect_cwes_from_text(id, &mut cwe);
+                }
+            }
+            cwe.sort();
+            cwe.dedup();
             let taxa = parse_taxa(result);
-            let native_fingerprint = result
-                .partial_fingerprints
-                .values()
-                .next()
-                .or_else(|| result.fingerprints.values().next())
-                .cloned();
+            let native_fingerprint = native_fingerprint(result);
             let raw_sarif =
                 SecretRedactor::redact_json(&serde_json::to_value(result).unwrap_or(Value::Null));
             let category = classify(&scanner_id, &rule_id, &message, descriptor);
@@ -114,7 +117,7 @@ fn normalize_inner(
                 scanner_id: scanner_id.clone(),
                 scanner_name: scanner_name.clone(),
                 rule_id,
-                title,
+                title: SecretRedactor::redact_text(&title),
                 message,
                 severity,
                 category,
@@ -129,10 +132,81 @@ fn normalize_inner(
                 native_fingerprint,
                 workspace_fingerprint: String::new(),
                 raw_sarif,
+                provenance: FindingProvenance {
+                    scanner_id: scanner_id.clone(),
+                    scanner_name: scanner_name.clone(),
+                    scanner_version: run
+                        .tool
+                        .driver
+                        .semantic_version
+                        .clone()
+                        .or_else(|| run.tool.driver.version.clone()),
+                    source: if scanner_override.is_some() {
+                        "generated"
+                    } else {
+                        "imported"
+                    }
+                    .into(),
+                    source_format: if result
+                        .properties
+                        .get("source")
+                        .and_then(Value::as_str)
+                        .is_some_and(|s| s.contains("JSON compatibility"))
+                    {
+                        "json-adapter"
+                    } else {
+                        "sarif-2.1.0"
+                    }
+                    .into(),
+                    scan_run_id: scan_run_id.into(),
+                    result_metadata_hash: crate::fingerprint::hash_parts(&[
+                        &SecretRedactor::redact_json(&result.properties).to_string(),
+                    ]),
+                    rule_metadata_hash: crate::fingerprint::hash_parts(&[&serde_json::to_string(
+                        &descriptor,
+                    )?]),
+                    ..Default::default()
+                },
+                raw_reference: Some(RawReference {
+                    artifact_id: String::new(),
+                    run_index,
+                    result_index,
+                }),
+                ..Default::default()
             };
             let fingerprints = FingerprintEngine::for_finding(&finding);
             finding.native_fingerprint = fingerprints.native;
             finding.workspace_fingerprint = fingerprints.workspace;
+            finding.fingerprints = crate::fingerprint::structured(&finding);
+            if !sources.contains_key(&finding.location.file_path) {
+                if sources.len() >= 16 {
+                    sources.clear();
+                }
+                let project = crate::security_ir::Project {
+                    path: workspace_root.to_string_lossy().into(),
+                    ..Default::default()
+                };
+                let source = crate::workspace::read_source_file(
+                    &project,
+                    &finding.location.file_path,
+                    2 * 1024 * 1024,
+                )
+                .ok();
+                sources.insert(
+                    finding.location.file_path.clone(),
+                    source.map(|source| {
+                        source
+                            .content
+                            .lines()
+                            .map(str::to_owned)
+                            .collect::<Vec<_>>()
+                    }),
+                );
+            }
+            if let Some(Some(source)) = sources.get(&finding.location.file_path) {
+                finding.fingerprints.context =
+                    crate::fingerprint::context_from_lines(&finding, source);
+            }
             findings.push(finding);
         }
     }
@@ -141,13 +215,12 @@ fn normalize_inner(
 
 fn descriptor_for<'a>(
     run: &'a SarifRun,
-    result_index: usize,
+    _result_index: usize,
     result: &SarifResult,
 ) -> Option<&'a SarifReportingDescriptor> {
     let index = result
         .rule_index
-        .or_else(|| result.rule.as_ref().and_then(|rule| rule.index))
-        .or((result.rule_id.is_none() && result.rule.is_none()).then_some(result_index));
+        .or_else(|| result.rule.as_ref().and_then(|rule| rule.index));
     if let Some(index) = index {
         if let Some(rule) = run.tool.driver.rules.get(index) {
             return Some(rule);
@@ -177,7 +250,7 @@ fn parse_location(run: &SarifRun, workspace_root: &Path, location: &SarifLocatio
     let region = physical
         .and_then(|item| item.region.as_ref())
         .map(parse_region)
-        .unwrap_or_default();
+        .unwrap_or_else(|| parse_region(&SarifRegion::default()));
     Location {
         file_path,
         absolute_path,
@@ -248,9 +321,34 @@ fn parse_region(region: &SarifRegion) -> Region {
     }
 }
 
+// SARIF kinds are a set, not a priority list. Conflicting roles stay unknown.
+fn trace_kind(kinds: &[String]) -> TraceStepKind {
+    let mut role = TraceStepKind::Unknown;
+    for kind in kinds {
+        let next = match kind.as_str() {
+            "source" => TraceStepKind::Source,
+            "propagation" => TraceStepKind::Propagation,
+            "sanitizer" => TraceStepKind::Sanitizer,
+            "sink" => TraceStepKind::Sink,
+            "call" => TraceStepKind::Call,
+            "return" => TraceStepKind::Return,
+            _ => continue,
+        };
+        if role != TraceStepKind::Unknown && role != next {
+            return TraceStepKind::Unknown;
+        }
+        role = next;
+    }
+    role
+}
+
 fn parse_code_flow(run: &SarifRun, workspace_root: &Path, flow: &SarifCodeFlow) -> CodeFlow {
     CodeFlow {
-        message: flow.message.as_ref().and_then(|message| message.as_text()),
+        message: flow
+            .message
+            .as_ref()
+            .and_then(|message| message.as_text())
+            .map(|text| SecretRedactor::redact_text(&text)),
         thread_flows: flow
             .thread_flows
             .iter()
@@ -259,7 +357,8 @@ fn parse_code_flow(run: &SarifRun, workspace_root: &Path, flow: &SarifCodeFlow) 
                 message: thread
                     .message
                     .as_ref()
-                    .and_then(|message| message.as_text()),
+                    .and_then(|message| message.as_text())
+                    .map(|text| SecretRedactor::redact_text(&text)),
                 steps: thread
                     .locations
                     .iter()
@@ -282,6 +381,7 @@ fn parse_code_flow(run: &SarifRun, workspace_root: &Path, flow: &SarifCodeFlow) 
                             })
                             .unwrap_or_else(|| format!("Step {}", index + 1));
                         TraceStep {
+                            kind: trace_kind(&step.kinds),
                             index: index + 1,
                             label: humanize_label(&label),
                             message: location.message.clone(),
@@ -300,7 +400,8 @@ fn parse_fix(run: &SarifRun, workspace_root: &Path, fix: &SarifFix) -> Fix {
         description: fix
             .description
             .as_ref()
-            .and_then(|message| message.as_text()),
+            .and_then(|message| message.as_text())
+            .map(|text| SecretRedactor::redact_text(&text)),
         replacements: fix
             .artifact_changes
             .iter()
@@ -381,7 +482,9 @@ fn collect_cwes_from_value(value: &Value, output: &mut Vec<String>) {
 }
 
 fn collect_cwes_from_text(text: &str, output: &mut Vec<String>) {
-    let pattern = Regex::new(r"(?i)CWE[-_: ]?(\d{1,5})").expect("CWE regex");
+    static PATTERN: std::sync::OnceLock<Regex> = std::sync::OnceLock::new();
+    let pattern =
+        PATTERN.get_or_init(|| Regex::new(r"(?i)CWE[-_: ]?(\d{1,5})").expect("CWE regex"));
     for captures in pattern.captures_iter(text) {
         if let Some(number) = captures.get(1) {
             output.push(format!("CWE-{}", number.as_str()));
@@ -511,7 +614,7 @@ fn unknown_location() -> Location {
     }
 }
 
-fn slugify(value: &str) -> String {
+pub(crate) fn slugify(value: &str) -> String {
     value
         .chars()
         .map(|character| {
@@ -557,6 +660,27 @@ fn humanize_label(value: &str) -> String {
         .join(" ")
 }
 
+pub(crate) fn native_fingerprint(result: &SarifResult) -> Option<String> {
+    // HashMap iteration must never decide identity. Prefer full fingerprints and sort keys.
+    let native_map = if result.fingerprints.is_empty() {
+        &result.partial_fingerprints
+    } else {
+        &result.fingerprints
+    };
+    let mut native_entries = native_map.iter().collect::<Vec<_>>();
+    native_entries.sort_by_key(|(key, _)| *key);
+    if native_entries.is_empty() {
+        None
+    } else {
+        Some(crate::fingerprint::hash_parts(
+            &native_entries
+                .iter()
+                .flat_map(|(key, value)| [key.as_str(), value.as_str()])
+                .collect::<Vec<_>>(),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -564,6 +688,22 @@ mod tests {
 
     fn parse(input: &str) -> SarifLog {
         parse_sarif(input).expect("valid fixture")
+    }
+
+    #[test]
+    fn trace_kind_requires_unambiguous_explicit_evidence() {
+        assert_eq!(
+            trace_kind(&["taint".into(), "source".into()]),
+            TraceStepKind::Source
+        );
+        assert_eq!(
+            trace_kind(&["source".into(), "sink".into()]),
+            TraceStepKind::Unknown
+        );
+        assert_eq!(
+            trace_kind(&["user input reaches sink".into()]),
+            TraceStepKind::Unknown
+        );
     }
 
     #[test]

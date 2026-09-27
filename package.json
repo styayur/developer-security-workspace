@@ -1,6 +1,6 @@
 {
   "name": "developer-security-workspace",
-  "version": "0.1.0-preview",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.4.2",

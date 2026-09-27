@@ -1,3 +1,4 @@
+pub mod demo;
 use crate::error::{AppError, AppResult};
 use crate::security_ir::{Project, SourceFile};
 use chrono::Utc;
@@ -193,12 +194,13 @@ pub fn language_for(path: &Path) -> String {
 
 pub fn demo_workspace_files() -> Vec<(&'static str, &'static str)> {
     vec![
+        ("infra/main.tf", "# Synthetic tutorial only; not deployed.\nresource \"demo_storage\" \"example\" {\n  public_access = true\n}\n"),
         ("src/api/user.ts", "import express from \"express\";\nimport { db } from \"../db\";\n\nconst router = express.Router();\n\nrouter.get(\"/user\", async (req, res) => {\n  const id = req.query.id as string;\n  const query = `SELECT * FROM users WHERE id = '${id}'`;\n  const result = await db.query(query);\n  res.json(result.rows[0]);\n});\n\nexport default router;\n"),
         ("src/db.ts", "export const db = {\n  async query(sql: string) {\n    // Demo-only adapter. No real database is used.\n    return { rows: [{ sql }] };\n  }\n};\n"),
         ("scripts/legacy_task.py", "import subprocess\n\n\ndef run_report(path):\n    # Demo fixture: unsafe command construction for Bandit parsing.\n    command = \"cat \" + path\n    return subprocess.check_output(command, shell=True)\n"),
         (".env.example", "EXAMPLE_NOT_A_REAL_SECRET\nDATABASE_URL=postgres://local/demo\n"),
         ("package-lock.json", "{\n  \"name\": \"demo-workspace\",\n  \"lockfileVersion\": 3,\n  \"packages\": {\n    \"node_modules/example-package\": { \"version\": \"0.0.0\" }\n  }\n}\n"),
-        ("README.md", "# Demo Workspace\n\nThis workspace is generated locally so the bundled SARIF fixtures can be exercised through the real parser.\n"),
+        ("README.md", "# Demo Workspace\n\nSynthetic tutorial: open SQL injection, select Trace and step through each path, inspect Fix and redacted Raw, save Triage, then open Scan history and compare the two tutorial runs. Nothing here is executed or deployed.\n"),
     ]
 }
 

@@ -1,218 +1,119 @@
 <div align="center">
 
-<pre>
-██████╗ ███████╗██╗    ██╗
-██╔══██╗██╔════╝██║    ██║
-██║  ██║███████╗██║ █╗ ██║
-██║  ██║╚════██║██║███╗██║
-██████╔╝███████║╚███╔███╔╝
-╚═════╝ ╚══════╝ ╚══╝╚══╝
-</pre>
-
 # Developer Security Workspace
 
 ### Universal SARIF Desktop Client
 
+A local-first security workbench for debugging findings from source to sink.
+
 **Detect → Normalize → Understand → Trace → Compare → Triage**
 
-[![Release](https://img.shields.io/github/v/release/styayur/developer-security-workspace?include_prereleases&style=for-the-badge&label=release)](https://github.com/styayur/developer-security-workspace/releases)
-[![License](https://img.shields.io/badge/license-AGPL--3.0--only-blue?style=for-the-badge)](LICENSE)
-[![Tauri](https://img.shields.io/badge/Tauri-2-24C8DB?style=for-the-badge&logo=tauri)](https://tauri.app/)
-[![Rust](https://img.shields.io/badge/Rust-stable-000000?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
-[![React](https://img.shields.io/badge/React-19-149ECA?style=for-the-badge&logo=react)](https://react.dev/)
+[Releases](https://github.com/styayur/developer-security-workspace/releases) · [Demo walkthrough](docs/demo-workspace.md) · [Architecture](docs/architecture.md)
 
-A local-first vulnerability explorer, debugger, and scanner runtime.
-
-**No account. No telemetry. No cloud upload. No fake scanner results.**
+**No account. No telemetry. No cloud upload by DSW.**
 
 </div>
 
----
+<!-- Real hero screenshot belongs here: docs/assets/finding-debugger.png.
+     Capture the built app's Finding Debugger + Monaco + Trace; see docs/assets/README.md.
+     No fabricated screenshot or broken image reference is shipped. -->
 
-## Why this exists
+## Why DSW
 
-Most scanner output ends at a table. Developer Security Workspace treats a finding as something to debug:
+Scanners are replaceable producers. Security IR and the investigation workflow are the product.
 
-~~~text
-SARIF / Scanner
-       │
-       ▼
- Rust Security IR
-       │
-       ├── source location
-       ├── source → propagation → sink
-       ├── rule / CWE / fix metadata
-       ├── native + workspace fingerprint
-       └── raw SARIF
-       │
-       ▼
- SQLite
-       │
-       ▼
- Findings → Trace → Compare → Triage
-~~~
+A finding is a debuggable object: source location, independent data-flow paths, rule/CWE metadata, proposed fixes, provenance and a redacted raw result. DSW keeps that investigation local in a resizable IDE-style workbench.
 
-The UI is an IDE-style workbench, not an enterprise dashboard. It is built for people who need to understand the finding, not just count it.
+## Core workflow
 
-## Current Preview
+1. Open a repository or import SARIF 2.1.0.
+2. Filter SQLite-backed finding pages and open a finding in Monaco.
+3. Choose a trace path, step through source/propagation/sink, and inspect rule, fix and raw evidence.
+4. Compare scans with explained Native/Exact/Context/Relocated matches.
+5. Save triage on a stable identity so decisions survive rescanning.
 
-| Capability | Status |
+**Try Demo Workspace** creates two synthetic scans with SQL injection, cross-file trace, a parameterized-query fix, redacted secret, dependency and IaC findings. [Follow the interactive tutorial](docs/demo-workspace.md).
+
+## Screenshots
+
+The first product screenshot must show the real Finding Debugger, Monaco and Trace together. [Capture instructions and asset locations](docs/assets/README.md) are ready; no generated mock screenshot is presented as a working product.
+
+## Capabilities
+
+| Capability | Implementation |
 | --- | --- |
-| Tauri 2 desktop runtime | Ready |
-| SARIF 2.1.0 parser | Ready |
-| Rust Security IR | Ready |
-| SQLite history and migrations | Ready |
-| Monaco source debugger | Ready |
-| SARIF code flows / Trace Player | Ready |
-| Raw SARIF inspector | Ready |
-| BLAKE3 workspace fingerprints | Ready |
-| New / Existing / Fixed diff | Ready |
-| Triage and notes | Ready |
-| SARIF import / export | Ready |
-| Demo Workspace | Ready |
-| Semgrep provider | Verified locally |
-| Trivy provider | Verified locally |
-| TruffleHog provider | Verified locally |
-| Bandit provider | Verified locally |
-| CodeQL runtime | User-selected only |
-| Extension execution | Intentionally disabled |
+| Stable internal protocol | Security IR v1, versioned provenance and normalization goldens |
+| Finding identity | Native, exact, source-context and deterministic semantic evidence; ambiguous collisions stay separate |
+| Lifecycle and triage | First/last seen, occurrences, Fixed/Reopened; identity-bound decisions and notes |
+| Scan comparison | New, Existing, Fixed, Reopened, Changed; paginated result buckets |
+| Trace Debugger | Thread selection, cross-file Monaco ranges, Step n/N, keyboard Previous/Next |
+| Large result sets | SQLite filters/counts, 100-row UI pages, bounded IPC, lazy raw-result references |
+| Local persistence | Transactional schema migrations preserve Preview projects/history/triage |
+| Scanner extensions | Reviewed declarative Gitleaks profile, explicit manifest/binary approval, no plugin scripts |
+| Import/export | SARIF 2.1.0 with existing compatibility adapters |
 
-## Verified scanner matrix
+## Scanner matrix
 
-The Preview was exercised against real local CLI installations:
+All existing real providers remain available. Scanner binaries are installed separately and never silently downloaded by DSW.
 
-| Scanner | Verified version | Output | Smoke findings |
-| --- | --- | --- | --- |
-| Semgrep | 1.178.0 | SARIF | 1 |
-| Trivy | 0.74.0 | SARIF | 16 through app provider |
-| TruffleHog | 3.97.9 | JSON compatibility adapter | 2 through app provider |
-| Bandit | 1.9.4 | JSON compatibility adapter | 2 |
+| Producer | Input to DSW | Notes |
+| --- | --- | --- |
+| Semgrep | Native SARIF | Metrics disabled; user-selected rules/config |
+| Trivy | Native SARIF | SCA, secrets, configuration, containers and licenses |
+| TruffleHog | Trusted JSON adapter | Raw candidate values removed; verification follows scanner settings |
+| Bandit | SARIF / trusted JSON adapter | Formatter fallback retains rule, severity, confidence and CWE |
+| Gitleaks extension | Native SARIF file | Explicit approval; reviewed offline/read-only profile |
+| CodeQL and other tools | Imported SARIF | CodeQL runtime remains user-provided; no engine bundled |
 
-The smoke fixture is under fixtures/scanner-smoke. It contains synthetic values only.
-
-### Recommended configuration
-
-- **Semgrep:** local rules or an explicit registry config; metrics are disabled.
-- **Trivy:** vulnerabilities, misconfiguration, secrets, and licenses enabled.
-- **TruffleHog:** verified, unverified, unknown, and filtered-unverified candidates; raw values are redacted before persistence.
-- **Bandit:** SARIF when available, structured JSON compatibility fallback otherwise.
-- **CodeQL:** user-provided runtime only; no engine redistribution or silent download.
-
-## Install
-
-Download the latest NSIS installer from [GitHub Releases](https://github.com/styayur/developer-security-workspace/releases).
-
-Requirements on Windows:
-
-- Windows 10/11 x64
-- WebView2 runtime
-- Scanner CLIs are optional; the app detects them but never downloads them silently
-
-## Development
-
-~~~powershell
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm build
-cargo test --manifest-path src-tauri/Cargo.toml
-pnpm tauri dev
-~~~
-
-Build the Windows installer with MSVC:
-
-~~~powershell
-pnpm tauri build
-~~~
-
-Windows GNU fallback:
-
-~~~powershell
-rustup toolchain install stable-x86_64-pc-windows-gnu --profile minimal
-powershell -ExecutionPolicy Bypass -File scripts/build-windows-gnu.ps1
-~~~
+[Provider details and historical verified versions](docs/scanner-providers.md) · [Extension security boundary](docs/extension-model.md)
 
 ## Architecture
 
-~~~text
-┌──────────────────────────────────────────────────────────────┐
-│ React / TypeScript / Monaco / TanStack                       │
-├──────────────────────────────────────────────────────────────┤
-│                    Tauri IPC boundary                        │
-├──────────────────────────────────────────────────────────────┤
-│ Rust Runtime                                                 │
-│  ├─ SARIF parser + path mapper + normalizer                  │
-│  ├─ Security IR + BLAKE3 fingerprints                        │
-│  ├─ Scanner Provider runtime + cancellation + log limits     │
-│  ├─ Secret redaction + source guard                          │
-│  └─ SQLite history + triage + diff                           │
-└──────────────────────────────────────────────────────────────┘
-~~~
+```text
+Scanner / SARIF -> normalize + redact -> Security IR v1
+                                      -> layered matcher -> identity + occurrence
+                                      -> SQLite -> paginated inbox -> Monaco / trace / triage
+```
 
-No localhost HTTP backend is started.
+React/TypeScript + Monaco; Tauri 2; Rust; local SQLite. No localhost backend, database server, Electron, cloud service or AI matching. [Protocol, matching and migration policy](docs/architecture.md).
 
-## Repository map
+## Install
 
-~~~text
-src/                 React desktop UI
-src-tauri/src/       Rust runtime and Tauri commands
-fixtures/sarif/      SARIF parser fixtures
-fixtures/scanner-smoke/
-docs/                Architecture, security, scanner, licensing docs
-third_party/         Third-party attribution boundaries
-~~~
+Download the Windows x64 NSIS installer and SHA256SUMS from [GitHub Releases](https://github.com/styayur/developer-security-workspace/releases). Windows 10/11 and WebView2 are required. v1.0.0 uses a self-signed Authenticode certificate; it does not provide public-CA trust or remove SmartScreen. The public certificate and checksums accompany the release. See [signature verification](docs/release.md).
 
-## Privacy
+## Development
 
-- No login.
-- No account.
-- No telemetry.
-- No analytics.
-- No cloud upload.
-- The database lives in the operating system application-data directory.
-- Source files are read-only and confined to the active workspace.
-- Scanner logs and persisted raw SARIF are secret-redacted.
-
-## Build quality
-
-The preview currently passes:
-
-~~~text
+```powershell
+pnpm install --frozen-lockfile
 pnpm typecheck
-pnpm test                 5/5
+pnpm test
 pnpm build
-cargo test                30 passed, 1 scanner integration ignored by default
-cargo test -- --ignored   4 real scanner providers passed locally
-cargo fmt --check
-Clippy with -D warnings
-pnpm tauri build
-~~~
+cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+cargo test --manifest-path src-tauri/Cargo.toml
+pnpm tauri dev
+```
 
-## Known limitations
+Windows desktop validation additionally uses `--features desktop`. Build an installer with `pnpm tauri build` (MSVC C++ Build Tools required), or use the existing [GNU fallback](scripts/build-windows-gnu.ps1) with an installed GNU/MinGW toolchain. [CI and release operations](docs/release.md).
 
-- Full CodeQL database analysis is not part of this Preview.
-- Extension runtime execution is intentionally disabled.
-- TruffleHog and Bandit use compatibility adapters when native SARIF is unavailable.
-- Scanner installation remains an explicit user action.
-- Unsigned Preview builds may trigger Windows SmartScreen.
-- False positives and false negatives must be reviewed by a human.
+Generate performance inputs with `node scripts/generate-large-sarif.mjs 50000 work/large-50000.sarif`. [Benchmarks and limits](docs/performance.md).
 
-## Security
+## Security and privacy
 
-See SECURITY.md. Do not report vulnerabilities in public issues.
+Source reads stay within the canonical workspace. Scanner processes use executable + argv, with bounded logs, deadlines and cancellation. SARIF/log redaction runs before persistence and UI log events. Context fingerprint metadata contains only hashes.
 
-## License
+DSW has no account, telemetry, analytics or cloud storage. External scanners may have their own network/database/credential-verification behavior. Extension permission declarations are not an OS sandbox for a malicious native binary. [Security model](docs/security-model.md) · [Private vulnerability reporting](SECURITY.md).
 
-Application source: **AGPL-3.0-only**. See LICENSE.
+## Known limits
 
-Optional scanners and runtimes retain their own licenses. See NOTICE.md, THIRD_PARTY_LICENSES.md, and docs/licensing.md.
+- SARIF import streams through disk-backed staging with cancellation: 1 GiB input, 2 MiB per result/value, 8 MiB metadata. Scanner machine output remains capped at 128 MiB; full Raw inspection at 8 MiB.
+- Duplicate ambiguous findings remain unmatched; v1 does not match across different rules or conflicting symbols.
+- Extension execution currently supports the reviewed Gitleaks profile only; arbitrary native commands/custom converters are disabled.
+- Full CodeQL database analysis and Authenticode signing are outside this Preview.
+- 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory profiling and real desktop screenshots remain separate validation work.
 
-This project is not affiliated with or endorsed by Semgrep, Aqua Security, Truffle Security, PyCQA, GitHub, or any scanner vendor.
+## Licensing
 
----
+Application source: **AGPL-3.0-only** ([LICENSE](LICENSE)). Optional scanners retain their own terms and are not bundled. See [NOTICE](NOTICE.md), [third-party licenses](THIRD_PARTY_LICENSES.md), and [licensing](docs/licensing.md).
 
-<div align="center">
-
-**Scan locally. Understand deeply. Ship deliberately.**
-
-</div>
+This project is not affiliated with or endorsed by any scanner vendor.

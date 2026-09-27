@@ -1,0 +1,2245 @@
+{
+  "ir/bandit.json": [
+    {
+      "category": "sast",
+      "codeFlows": [],
+      "cwe": [
+        "CWE-78"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "552968c2a7a061e9cf03551a85ce19b4144faa50c0b39dc5c215a2926bec6f55",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "scripts/task.py",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 31,
+          "endLine": 7,
+          "snippet": null,
+          "startColumn": 13,
+          "startLine": 7
+        }
+      },
+      "message": "subprocess call with shell=True",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "4dec907da108a8269683a2218e9cc19bac4c63e7a3307796cf474507783a3d80",
+        "ruleMetadataHash": "c87b1ad5390edf6be1d1be8af9d1882b282f9edbf2374856e64a67afc9b71b29",
+        "scanRunId": "run",
+        "scannerId": "bandit",
+        "scannerName": "Bandit",
+        "scannerVersion": null,
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "json-adapter"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "scripts/task.py",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 31,
+                "endLine": 7,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 13,
+                "startLine": 7
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "subprocess call with shell=True"
+        },
+        "partialFingerprints": {},
+        "properties": {
+          "cwe": "CWE-78",
+          "issue_confidence": "HIGH",
+          "issue_cwe": {
+            "id": 78
+          },
+          "security-severity": "8.0",
+          "source": "Bandit JSON compatibility adapter"
+        },
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "B602",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "B602",
+      "scanRunId": "run",
+      "scannerId": "bandit",
+      "scannerName": "Bandit",
+      "severity": "high",
+      "status": "new",
+      "taxa": [],
+      "title": "subprocess call with shell=True",
+      "triageNote": null,
+      "workspaceFingerprint": "552968c2a7a061e9cf03551a85ce19b4144faa50c0b39dc5c215a2926bec6f55"
+    }
+  ],
+  "ir/partial.sarif": [
+    {
+      "category": "unknown",
+      "codeFlows": [],
+      "cwe": [],
+      "fingerprints": {
+        "context": null,
+        "exact": "4972b3cae3cc4d90b1f02ad5770d426503256981325fa70fef36989594c0ed25",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "unknown",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 1,
+          "endLine": 1,
+          "snippet": null,
+          "startColumn": 1,
+          "startLine": 1
+        }
+      },
+      "message": "unknown-rule",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "scanRunId": "run",
+        "scannerId": "unknown-scanner",
+        "scannerName": "Unknown scanner",
+        "scannerVersion": null,
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": null,
+        "locations": [],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": null
+        },
+        "partialFingerprints": {},
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": null,
+        "ruleIndex": null,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "unknown-rule",
+      "scanRunId": "run",
+      "scannerId": "unknown-scanner",
+      "scannerName": "Unknown scanner",
+      "severity": "medium",
+      "status": "new",
+      "taxa": [],
+      "title": "unknown-rule",
+      "triageNote": null,
+      "workspaceFingerprint": "4972b3cae3cc4d90b1f02ad5770d426503256981325fa70fef36989594c0ed25"
+    },
+    {
+      "category": "unknown",
+      "codeFlows": [
+        {
+          "message": null,
+          "threadFlows": [
+            {
+              "id": null,
+              "message": null,
+              "steps": [
+                {
+                  "index": 1,
+                  "kind": "unknown",
+                  "label": "Source Sink",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "unknown",
+                    "logicalLocations": [],
+                    "message": "source sink",
+                    "region": {
+                      "endColumn": 1,
+                      "endLine": 1,
+                      "snippet": null,
+                      "startColumn": 1,
+                      "startLine": 1
+                    }
+                  },
+                  "message": "source sink",
+                  "nestingLevel": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cwe": [],
+      "fingerprints": {
+        "context": null,
+        "exact": "7255c34b64b41dfe96d07c4d94c5d186acea9bc4024d0955a5c3b49ed47ff6be",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "unknown",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 1,
+          "endLine": 1,
+          "snippet": null,
+          "startColumn": 1,
+          "startLine": 1
+        }
+      },
+      "message": "Source sink wording is not kind evidence",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "scanRunId": "run",
+        "scannerId": "unknown-scanner",
+        "scannerName": "Unknown scanner",
+        "scannerVersion": null,
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 1,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [
+          {
+            "message": null,
+            "properties": null,
+            "threadFlows": [
+              {
+                "id": null,
+                "locations": [
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "source sink"
+                      },
+                      "physicalLocation": null,
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  }
+                ],
+                "message": null,
+                "properties": null
+              }
+            ]
+          }
+        ],
+        "fingerprints": {},
+        "fixes": [],
+        "level": null,
+        "locations": [],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Source sink wording is not kind evidence"
+        },
+        "partialFingerprints": {},
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": null,
+        "ruleIndex": null,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "unknown-rule",
+      "scanRunId": "run",
+      "scannerId": "unknown-scanner",
+      "scannerName": "Unknown scanner",
+      "severity": "medium",
+      "status": "new",
+      "taxa": [],
+      "title": "Source sink wording is not kind evidence",
+      "triageNote": null,
+      "workspaceFingerprint": "7255c34b64b41dfe96d07c4d94c5d186acea9bc4024d0955a5c3b49ed47ff6be"
+    }
+  ],
+  "ir/rich.sarif": [
+    {
+      "category": "sast",
+      "codeFlows": [
+        {
+          "message": "Request input to SQL sink",
+          "threadFlows": [
+            {
+              "id": "main",
+              "message": "Main execution thread",
+              "steps": [
+                {
+                  "index": 1,
+                  "kind": "source",
+                  "label": "Source",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "User input enters the handler.",
+                    "region": {
+                      "endColumn": 38,
+                      "endLine": 7,
+                      "snippet": null,
+                      "startColumn": 15,
+                      "startLine": 7
+                    }
+                  },
+                  "message": "User input enters the handler.",
+                  "nestingLevel": 0
+                },
+                {
+                  "index": 2,
+                  "kind": "unknown",
+                  "label": "Data",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "Input is interpolated into a query.",
+                    "region": {
+                      "endColumn": 55,
+                      "endLine": 8,
+                      "snippet": null,
+                      "startColumn": 17,
+                      "startLine": 8
+                    }
+                  },
+                  "message": "Input is interpolated into a query.",
+                  "nestingLevel": 0
+                },
+                {
+                  "index": 3,
+                  "kind": "sink",
+                  "label": "Sink",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "The query reaches the database sink.",
+                    "region": {
+                      "endColumn": 40,
+                      "endLine": 9,
+                      "snippet": null,
+                      "startColumn": 24,
+                      "startLine": 9
+                    }
+                  },
+                  "message": "The query reaches the database sink.",
+                  "nestingLevel": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "message": "Independent path",
+          "threadFlows": [
+            {
+              "id": "alternative",
+              "message": null,
+              "steps": [
+                {
+                  "index": 1,
+                  "kind": "call",
+                  "label": "Call",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/db.ts",
+                    "logicalLocations": [],
+                    "message": "Database call",
+                    "region": {
+                      "endColumn": 18,
+                      "endLine": 2,
+                      "snippet": null,
+                      "startColumn": 3,
+                      "startLine": 2
+                    }
+                  },
+                  "message": "Database call",
+                  "nestingLevel": 0
+                },
+                {
+                  "index": 2,
+                  "kind": "return",
+                  "label": "Return",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [
+                      "router.user"
+                    ],
+                    "message": null,
+                    "region": {
+                      "endColumn": 55,
+                      "endLine": 8,
+                      "snippet": null,
+                      "startColumn": 17,
+                      "startLine": 8
+                    }
+                  },
+                  "message": null,
+                  "nestingLevel": 0
+                }
+              ]
+            },
+            {
+              "id": "empty",
+              "message": null,
+              "steps": []
+            }
+          ]
+        }
+      ],
+      "cwe": [
+        "CWE-89"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "62d1d422310b2d3ffdbb9dbbd220e06c876075c6b63fce72d05300d87be2c9aa",
+        "native": "32604c94fbb63fdde8444f6401f849823ecf6f29b43a1e67f347003f09cdd34d",
+        "semantic": "98854c7f8be3971c3d7027f63c251e43e6430046f43907200334a0aa34f8b9b5"
+      },
+      "fixes": [
+        {
+          "description": "Use a parameterized query",
+          "replacements": [
+            {
+              "deletedRegion": {
+                "endColumn": 40,
+                "endLine": 9,
+                "snippet": null,
+                "startColumn": 3,
+                "startLine": 8
+              },
+              "filePath": "src/api/user.ts",
+              "insertedContent": "const result = await db.query(\"SELECT * FROM users WHERE id = $1\", [id]);"
+            }
+          ]
+        }
+      ],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "src/api/user.ts",
+        "logicalLocations": [
+          "router.user"
+        ],
+        "message": null,
+        "region": {
+          "endColumn": 55,
+          "endLine": 8,
+          "snippet": null,
+          "startColumn": 17,
+          "startLine": 8
+        }
+      },
+      "message": "Data flows from req.query.id to db.query.",
+      "nativeFingerprint": "32604c94fbb63fdde8444f6401f849823ecf6f29b43a1e67f347003f09cdd34d",
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "0fdd9cecbc51d47fda5fac45a022517dc6bfb0931428eb372b2b2879dfff98bb",
+        "scanRunId": "run",
+        "scannerId": "semgrep",
+        "scannerName": "Semgrep",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [
+          {
+            "message": {
+              "arguments": [],
+              "id": null,
+              "markdown": null,
+              "properties": null,
+              "text": "Request input to SQL sink"
+            },
+            "properties": null,
+            "threadFlows": [
+              {
+                "id": "main",
+                "locations": [
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "source"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "User input enters the handler."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 38,
+                          "endLine": 7,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 15,
+                          "startLine": 7
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  },
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "data"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "Input is interpolated into a query."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 55,
+                          "endLine": 8,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 17,
+                          "startLine": 8
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  },
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "sink"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "The query reaches the database sink."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 40,
+                          "endLine": 9,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 24,
+                          "startLine": 9
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  }
+                ],
+                "message": {
+                  "arguments": [],
+                  "id": null,
+                  "markdown": null,
+                  "properties": null,
+                  "text": "Main execution thread"
+                },
+                "properties": null
+              }
+            ]
+          },
+          {
+            "message": {
+              "arguments": [],
+              "id": null,
+              "markdown": null,
+              "properties": null,
+              "text": "Independent path"
+            },
+            "properties": null,
+            "threadFlows": [
+              {
+                "id": "alternative",
+                "locations": [
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "call"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "Database call"
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/db.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 18,
+                          "endLine": 2,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 3,
+                          "startLine": 2
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  },
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "return"
+                    ],
+                    "location": {
+                      "logicalLocations": [
+                        {
+                          "decoratedName": null,
+                          "fullyQualifiedName": "router.user",
+                          "index": null,
+                          "kind": null,
+                          "name": null,
+                          "properties": null
+                        }
+                      ],
+                      "message": null,
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 55,
+                          "endLine": 8,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 17,
+                          "startLine": 8
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  }
+                ],
+                "message": null,
+                "properties": null
+              },
+              {
+                "id": "empty",
+                "locations": [],
+                "message": null,
+                "properties": null
+              }
+            ]
+          }
+        ],
+        "fingerprints": {
+          "a/native": "native-a",
+          "z/native": "native-z"
+        },
+        "fixes": [
+          {
+            "artifactChanges": [
+              {
+                "artifactLocation": {
+                  "description": null,
+                  "index": null,
+                  "properties": null,
+                  "uri": "src/api/user.ts",
+                  "uriBaseId": null
+                },
+                "properties": null,
+                "replacements": [
+                  {
+                    "deletedRegion": {
+                      "byteLength": null,
+                      "byteOffset": null,
+                      "charLength": null,
+                      "charOffset": null,
+                      "endColumn": 40,
+                      "endLine": 9,
+                      "message": null,
+                      "properties": null,
+                      "snippet": null,
+                      "sourceLanguage": null,
+                      "startColumn": 3,
+                      "startLine": 8
+                    },
+                    "insertedContent": {
+                      "binary": null,
+                      "properties": null,
+                      "rendered": null,
+                      "text": "const result = await db.query(\"SELECT * FROM users WHERE id = $1\", [id]);"
+                    },
+                    "properties": null
+                  }
+                ]
+              }
+            ],
+            "description": {
+              "arguments": [],
+              "id": null,
+              "markdown": null,
+              "properties": null,
+              "text": "Use a parameterized query"
+            },
+            "properties": null
+          }
+        ],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [
+              {
+                "decoratedName": null,
+                "fullyQualifiedName": "router.user",
+                "index": null,
+                "kind": null,
+                "name": null,
+                "properties": null
+              }
+            ],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "src/api/user.ts",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 55,
+                "endLine": 8,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 17,
+                "startLine": 8
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Data flows from req.query.id to db.query."
+        },
+        "partialFingerprints": {
+          "primaryLocationLineHash": "fixture-codeflow-v1"
+        },
+        "properties": null,
+        "relatedLocations": [
+          {
+            "logicalLocations": [],
+            "message": {
+              "arguments": [],
+              "id": null,
+              "markdown": null,
+              "properties": null,
+              "text": "Database call"
+            },
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "src/db.ts",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 18,
+                "endLine": 2,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 3,
+                "startLine": 2
+              }
+            },
+            "properties": null
+          }
+        ],
+        "rule": null,
+        "ruleId": "javascript.taint.sql-flow",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": [
+          {
+            "guid": null,
+            "id": "CWE-89",
+            "index": null,
+            "properties": null
+          }
+        ]
+      },
+      "relatedLocations": [
+        {
+          "absolutePath": null,
+          "filePath": "src/db.ts",
+          "logicalLocations": [],
+          "message": "Database call",
+          "region": {
+            "endColumn": 18,
+            "endLine": 2,
+            "snippet": null,
+            "startColumn": 3,
+            "startLine": 2
+          }
+        }
+      ],
+      "ruleId": "javascript.taint.sql-flow",
+      "scanRunId": "run",
+      "scannerId": "semgrep",
+      "scannerName": "Semgrep",
+      "severity": "critical",
+      "status": "new",
+      "taxa": [
+        {
+          "id": "CWE-89",
+          "name": null,
+          "shortDescription": null
+        }
+      ],
+      "title": "Tainted request input reaches SQL sink",
+      "triageNote": null,
+      "workspaceFingerprint": "62d1d422310b2d3ffdbb9dbbd220e06c876075c6b63fce72d05300d87be2c9aa"
+    }
+  ],
+  "ir/trufflehog.jsonl": [
+    {
+      "category": "secrets",
+      "codeFlows": [],
+      "cwe": [],
+      "fingerprints": {
+        "context": null,
+        "exact": "b19cc49b07fcc7224e13d3a17a3347ae0307f4879ac5f998f4b0ba19049f7a92",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": ".env.example",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 1,
+          "endLine": 1,
+          "snippet": null,
+          "startColumn": 1,
+          "startLine": 1
+        }
+      },
+      "message": "Synthetic credential detected",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "30c6c20c96453d3028f1916848f41fcbebe0394d5661163022287d6a71882154",
+        "ruleMetadataHash": "0026fd7927b26f7d82e23fc4bbc4377b4287ae540f3004e87745c52351b7d279",
+        "scanRunId": "run",
+        "scannerId": "trufflehog",
+        "scannerName": "TruffleHog",
+        "scannerVersion": null,
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "json-adapter"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "warning",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": ".env.example",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": null,
+                "endLine": null,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 1,
+                "startLine": 1
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Synthetic credential detected"
+        },
+        "partialFingerprints": {},
+        "properties": {
+          "detector": "Synthetic",
+          "redacted": "[synthetic redacted]",
+          "source": "TruffleHog JSON compatibility adapter",
+          "verified": false
+        },
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "trufflehog.synthetic",
+        "ruleIndex": null,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "trufflehog.synthetic",
+      "scanRunId": "run",
+      "scannerId": "trufflehog",
+      "scannerName": "TruffleHog",
+      "severity": "medium",
+      "status": "new",
+      "taxa": [],
+      "title": "Synthetic credential detected",
+      "triageNote": null,
+      "workspaceFingerprint": "b19cc49b07fcc7224e13d3a17a3347ae0307f4879ac5f998f4b0ba19049f7a92"
+    }
+  ],
+  "sarif/codeflow-example.sarif": [
+    {
+      "category": "sast",
+      "codeFlows": [
+        {
+          "message": "Request input to SQL sink",
+          "threadFlows": [
+            {
+              "id": "main",
+              "message": "Main execution thread",
+              "steps": [
+                {
+                  "index": 1,
+                  "kind": "source",
+                  "label": "Source",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "User input enters the handler.",
+                    "region": {
+                      "endColumn": 38,
+                      "endLine": 7,
+                      "snippet": null,
+                      "startColumn": 15,
+                      "startLine": 7
+                    }
+                  },
+                  "message": "User input enters the handler.",
+                  "nestingLevel": 0
+                },
+                {
+                  "index": 2,
+                  "kind": "unknown",
+                  "label": "Data",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "Input is interpolated into a query.",
+                    "region": {
+                      "endColumn": 55,
+                      "endLine": 8,
+                      "snippet": null,
+                      "startColumn": 17,
+                      "startLine": 8
+                    }
+                  },
+                  "message": "Input is interpolated into a query.",
+                  "nestingLevel": 0
+                },
+                {
+                  "index": 3,
+                  "kind": "sink",
+                  "label": "Sink",
+                  "location": {
+                    "absolutePath": null,
+                    "filePath": "src/api/user.ts",
+                    "logicalLocations": [],
+                    "message": "The query reaches the database sink.",
+                    "region": {
+                      "endColumn": 40,
+                      "endLine": 9,
+                      "snippet": null,
+                      "startColumn": 24,
+                      "startLine": 9
+                    }
+                  },
+                  "message": "The query reaches the database sink.",
+                  "nestingLevel": 0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "cwe": [
+        "CWE-89"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "62d1d422310b2d3ffdbb9dbbd220e06c876075c6b63fce72d05300d87be2c9aa",
+        "native": "2f5a2cc0f6621b6daee6ea5f04f15f0e844d6133170eb4a33ee07cd591ff16a7",
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "src/api/user.ts",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 55,
+          "endLine": 8,
+          "snippet": null,
+          "startColumn": 17,
+          "startLine": 8
+        }
+      },
+      "message": "Data flows from req.query.id to db.query.",
+      "nativeFingerprint": "2f5a2cc0f6621b6daee6ea5f04f15f0e844d6133170eb4a33ee07cd591ff16a7",
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "0fdd9cecbc51d47fda5fac45a022517dc6bfb0931428eb372b2b2879dfff98bb",
+        "scanRunId": "run",
+        "scannerId": "semgrep",
+        "scannerName": "Semgrep",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [
+          {
+            "message": {
+              "arguments": [],
+              "id": null,
+              "markdown": null,
+              "properties": null,
+              "text": "Request input to SQL sink"
+            },
+            "properties": null,
+            "threadFlows": [
+              {
+                "id": "main",
+                "locations": [
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "source"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "User input enters the handler."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 38,
+                          "endLine": 7,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 15,
+                          "startLine": 7
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  },
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "data"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "Input is interpolated into a query."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 55,
+                          "endLine": 8,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 17,
+                          "startLine": 8
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  },
+                  {
+                    "executionOrder": null,
+                    "importance": null,
+                    "kinds": [
+                      "sink"
+                    ],
+                    "location": {
+                      "logicalLocations": [],
+                      "message": {
+                        "arguments": [],
+                        "id": null,
+                        "markdown": null,
+                        "properties": null,
+                        "text": "The query reaches the database sink."
+                      },
+                      "physicalLocation": {
+                        "address": null,
+                        "artifactLocation": {
+                          "description": null,
+                          "index": null,
+                          "properties": null,
+                          "uri": "src/api/user.ts",
+                          "uriBaseId": null
+                        },
+                        "contextRegion": null,
+                        "properties": null,
+                        "region": {
+                          "byteLength": null,
+                          "byteOffset": null,
+                          "charLength": null,
+                          "charOffset": null,
+                          "endColumn": 40,
+                          "endLine": 9,
+                          "message": null,
+                          "properties": null,
+                          "snippet": null,
+                          "sourceLanguage": null,
+                          "startColumn": 24,
+                          "startLine": 9
+                        }
+                      },
+                      "properties": null
+                    },
+                    "module": null,
+                    "nestingLevel": null,
+                    "properties": null,
+                    "stack": null,
+                    "state": null,
+                    "taxa": []
+                  }
+                ],
+                "message": {
+                  "arguments": [],
+                  "id": null,
+                  "markdown": null,
+                  "properties": null,
+                  "text": "Main execution thread"
+                },
+                "properties": null
+              }
+            ]
+          }
+        ],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "src/api/user.ts",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 55,
+                "endLine": 8,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 17,
+                "startLine": 8
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Data flows from req.query.id to db.query."
+        },
+        "partialFingerprints": {
+          "primaryLocationLineHash": "fixture-codeflow-v1"
+        },
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "javascript.taint.sql-flow",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "javascript.taint.sql-flow",
+      "scanRunId": "run",
+      "scannerId": "semgrep",
+      "scannerName": "Semgrep",
+      "severity": "critical",
+      "status": "new",
+      "taxa": [],
+      "title": "Tainted request input reaches SQL sink",
+      "triageNote": null,
+      "workspaceFingerprint": "62d1d422310b2d3ffdbb9dbbd220e06c876075c6b63fce72d05300d87be2c9aa"
+    }
+  ],
+  "sarif/multi-run-example.sarif": [
+    {
+      "category": "sast",
+      "codeFlows": [],
+      "cwe": [
+        "CWE-89"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "c397c19ca1a0b1f81bd5c75ddde0fe2725d9c9001f342a3188d0a21149cbc9fe",
+        "native": "dfce4e9605fb67393e9e9e75649501978fb5adeecdf58860bf8d05b527f94a81",
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "src/api/user.ts",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 55,
+          "endLine": 8,
+          "snippet": "const query = `SELECT * FROM users WHERE id = '${id}'`;",
+          "startColumn": 17,
+          "startLine": 8
+        }
+      },
+      "message": "User-controlled req.query.id is concatenated into a SQL query.",
+      "nativeFingerprint": "dfce4e9605fb67393e9e9e75649501978fb5adeecdf58860bf8d05b527f94a81",
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "2ab392aa7949752449af3b6a9a1b8d225470b661f15861ac9f211107ee13b248",
+        "scanRunId": "run",
+        "scannerId": "semgrep",
+        "scannerName": "Semgrep",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "src/api/user.ts",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 55,
+                "endLine": 8,
+                "message": null,
+                "properties": null,
+                "snippet": {
+                  "binary": null,
+                  "properties": null,
+                  "rendered": null,
+                  "text": "const query = `SELECT * FROM users WHERE id = '${id}'`;"
+                },
+                "sourceLanguage": null,
+                "startColumn": 17,
+                "startLine": 8
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "User-controlled req.query.id is concatenated into a SQL query."
+        },
+        "partialFingerprints": {
+          "primaryLocationLineHash": "fixture-semgrep-sql-v1"
+        },
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "javascript.express.sql-injection",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "javascript.express.sql-injection",
+      "scanRunId": "run",
+      "scannerId": "semgrep",
+      "scannerName": "Semgrep",
+      "severity": "high",
+      "status": "new",
+      "taxa": [],
+      "title": "User input reaches a SQL query",
+      "triageNote": null,
+      "workspaceFingerprint": "c397c19ca1a0b1f81bd5c75ddde0fe2725d9c9001f342a3188d0a21149cbc9fe"
+    },
+    {
+      "category": "unknown",
+      "codeFlows": [],
+      "cwe": [],
+      "fingerprints": {
+        "context": null,
+        "exact": "c8082883b180adf830d12dc9af2081c0a0a9751384ba9bef010227fd69637a04",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "README.md",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 1,
+          "endLine": 1,
+          "snippet": null,
+          "startColumn": 1,
+          "startLine": 1
+        }
+      },
+      "message": "Finding from the second SARIF run.",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "scanRunId": "run",
+        "scannerId": "fixture-analyzer",
+        "scannerName": "Fixture Analyzer",
+        "scannerVersion": "2.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 1
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "note",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "README.md",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": null,
+                "endLine": null,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 1,
+                "startLine": 1
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Finding from the second SARIF run."
+        },
+        "partialFingerprints": {},
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "fixture.multi-run",
+        "ruleIndex": null,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "fixture.multi-run",
+      "scanRunId": "run",
+      "scannerId": "fixture-analyzer",
+      "scannerName": "Fixture Analyzer",
+      "severity": "low",
+      "status": "new",
+      "taxa": [],
+      "title": "Finding from the second SARIF run.",
+      "triageNote": null,
+      "workspaceFingerprint": "c8082883b180adf830d12dc9af2081c0a0a9751384ba9bef010227fd69637a04"
+    }
+  ],
+  "sarif/semgrep-example.sarif": [
+    {
+      "category": "sast",
+      "codeFlows": [],
+      "cwe": [
+        "CWE-89"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "c397c19ca1a0b1f81bd5c75ddde0fe2725d9c9001f342a3188d0a21149cbc9fe",
+        "native": "dfce4e9605fb67393e9e9e75649501978fb5adeecdf58860bf8d05b527f94a81",
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "src/api/user.ts",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 55,
+          "endLine": 8,
+          "snippet": "const query = `SELECT * FROM users WHERE id = '${id}'`;",
+          "startColumn": 17,
+          "startLine": 8
+        }
+      },
+      "message": "User-controlled req.query.id is concatenated into a SQL query.",
+      "nativeFingerprint": "dfce4e9605fb67393e9e9e75649501978fb5adeecdf58860bf8d05b527f94a81",
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "21d0ff91593abfc710052bc4c9b04ebb2002cb53b4a24de70399f0a26a08b7df",
+        "ruleMetadataHash": "2ab392aa7949752449af3b6a9a1b8d225470b661f15861ac9f211107ee13b248",
+        "scanRunId": "run",
+        "scannerId": "semgrep",
+        "scannerName": "Semgrep",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "src/api/user.ts",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 55,
+                "endLine": 8,
+                "message": null,
+                "properties": null,
+                "snippet": {
+                  "binary": null,
+                  "properties": null,
+                  "rendered": null,
+                  "text": "const query = `SELECT * FROM users WHERE id = '${id}'`;"
+                },
+                "sourceLanguage": null,
+                "startColumn": 17,
+                "startLine": 8
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "User-controlled req.query.id is concatenated into a SQL query."
+        },
+        "partialFingerprints": {
+          "primaryLocationLineHash": "fixture-semgrep-sql-v1"
+        },
+        "properties": null,
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "javascript.express.sql-injection",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "javascript.express.sql-injection",
+      "scanRunId": "run",
+      "scannerId": "semgrep",
+      "scannerName": "Semgrep",
+      "severity": "high",
+      "status": "new",
+      "taxa": [],
+      "title": "User input reaches a SQL query",
+      "triageNote": null,
+      "workspaceFingerprint": "c397c19ca1a0b1f81bd5c75ddde0fe2725d9c9001f342a3188d0a21149cbc9fe"
+    }
+  ],
+  "sarif/trivy-example.sarif": [
+    {
+      "category": "sca",
+      "codeFlows": [],
+      "cwe": [
+        "CWE-1104"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "1e4ecee6d1ffd8c53f9390125f6d47750dd5e40446c07ec339462eb702c9697d",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": "package-lock.json",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 30,
+          "endLine": 42,
+          "snippet": null,
+          "startColumn": 5,
+          "startLine": 42
+        }
+      },
+      "message": "Fixture dependency example-package 0.0.0 is reported vulnerable.",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "d8bce3aaea72de25408528d92ee3fa68d7f64a84788f104613ae71a0e4a1c00f",
+        "ruleMetadataHash": "679bb965b0922e7f12b8be02f34337f9e08cea2e756c5bc445974e667b0bde58",
+        "scanRunId": "run",
+        "scannerId": "trivy",
+        "scannerName": "Trivy",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "warning",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": "package-lock.json",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 30,
+                "endLine": 42,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 5,
+                "startLine": 42
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Fixture dependency example-package 0.0.0 is reported vulnerable."
+        },
+        "partialFingerprints": {},
+        "properties": {
+          "package": "example-package",
+          "security-severity": "7.5"
+        },
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "CVE-2024-EXAMPLE",
+        "ruleIndex": 0,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "CVE-2024-EXAMPLE",
+      "scanRunId": "run",
+      "scannerId": "trivy",
+      "scannerName": "Trivy",
+      "severity": "high",
+      "status": "new",
+      "taxa": [],
+      "title": "Example vulnerable dependency",
+      "triageNote": null,
+      "workspaceFingerprint": "1e4ecee6d1ffd8c53f9390125f6d47750dd5e40446c07ec339462eb702c9697d"
+    }
+  ],
+  "sarif/trufflehog-example.sarif": [
+    {
+      "category": "secrets",
+      "codeFlows": [],
+      "cwe": [
+        "CWE-798"
+      ],
+      "fingerprints": {
+        "context": null,
+        "exact": "befa19bd86df2bf7acaae04f2d76e771294dec2499f541755db5786ceeb75875",
+        "native": null,
+        "semantic": null
+      },
+      "fixes": [],
+      "id": "occurrence",
+      "lifecycle": {
+        "firstSeen": "",
+        "fixedAt": null,
+        "identityId": "",
+        "lastSeen": "",
+        "matchedBy": null,
+        "occurrenceCount": 0,
+        "reopenedAt": null,
+        "state": "new"
+      },
+      "location": {
+        "absolutePath": null,
+        "filePath": ".env.example",
+        "logicalLocations": [],
+        "message": null,
+        "region": {
+          "endColumn": 24,
+          "endLine": 1,
+          "snippet": null,
+          "startColumn": 1,
+          "startLine": 1
+        }
+      },
+      "message": "Fixture credential marker detected. Raw value is redacted.",
+      "nativeFingerprint": null,
+      "projectId": "project",
+      "provenance": {
+        "adapterVersion": "1",
+        "resultMetadataHash": "0659490738dd8c5518086435bb347424eeb7c1718803343f41a24249af82b300",
+        "ruleMetadataHash": "d61385e2afa2ee4d1d25e0d8393276108bb805287cd216ecfa4752f6617c7031",
+        "scanRunId": "run",
+        "scannerId": "trufflehog",
+        "scannerName": "TruffleHog",
+        "scannerVersion": "fixture-1.0",
+        "securityIrVersion": 1,
+        "source": "imported",
+        "sourceFormat": "sarif-2.1.0"
+      },
+      "rawReference": {
+        "artifactId": "",
+        "resultIndex": 0,
+        "runIndex": 0
+      },
+      "rawSarif": {
+        "codeFlows": [],
+        "fingerprints": {},
+        "fixes": [],
+        "level": "error",
+        "locations": [
+          {
+            "logicalLocations": [],
+            "message": null,
+            "physicalLocation": {
+              "address": null,
+              "artifactLocation": {
+                "description": null,
+                "index": null,
+                "properties": null,
+                "uri": ".env.example",
+                "uriBaseId": null
+              },
+              "contextRegion": null,
+              "properties": null,
+              "region": {
+                "byteLength": null,
+                "byteOffset": null,
+                "charLength": null,
+                "charOffset": null,
+                "endColumn": 24,
+                "endLine": 1,
+                "message": null,
+                "properties": null,
+                "snippet": null,
+                "sourceLanguage": null,
+                "startColumn": 1,
+                "startLine": 1
+              }
+            },
+            "properties": null
+          }
+        ],
+        "message": {
+          "arguments": [],
+          "id": null,
+          "markdown": null,
+          "properties": null,
+          "text": "Fixture credential marker detected. Raw value is redacted."
+        },
+        "partialFingerprints": {},
+        "properties": {
+          "detector": "ExampleDetector",
+          "redacted": "EXAMPLE_••••••••CRET",
+          "verified": false
+        },
+        "relatedLocations": [],
+        "rule": null,
+        "ruleId": "trufflehog.example-token",
+        "ruleIndex": null,
+        "stacks": [],
+        "suppressions": [],
+        "taxa": []
+      },
+      "relatedLocations": [],
+      "ruleId": "trufflehog.example-token",
+      "scanRunId": "run",
+      "scannerId": "trufflehog",
+      "scannerName": "TruffleHog",
+      "severity": "high",
+      "status": "new",
+      "taxa": [],
+      "title": "Example credential detected",
+      "triageNote": null,
+      "workspaceFingerprint": "befa19bd86df2bf7acaae04f2d76e771294dec2499f541755db5786ceeb75875"
+    }
+  ]
+}

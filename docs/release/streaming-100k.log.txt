@@ -1,0 +1,11 @@
+running 1 test
+phase=normalizing
+test storage::streaming_tests::streaming_large_benchmark has been running for over 60 seconds
+phase=matching
+pass=0 count=100000 elapsed_ms=203274 page_ms=453 ipc_bytes=54764
+phase=normalizing
+phase=matching
+pass=1 count=100000 elapsed_ms=419633 page_ms=666 ipc_bytes=55764
+test storage::streaming_tests::streaming_large_benchmark ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 59 filtered out; finished in 445.80s

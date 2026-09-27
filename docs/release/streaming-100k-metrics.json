@@ -1,0 +1,11 @@
+{
+  "limit_bytes": 536870912,
+  "limit_enforced_before_start": true,
+  "peak_working_set_bytes": 66383872,
+  "peak_commit_bytes": 54304768,
+  "job_peak_process_bytes": 54304768,
+  "exit_code": 0,
+  "elapsed_seconds": 447.293,
+  "executable": "GNU debug core test executable, copied before concurrent desktop build",
+  "report": "100000 synthetic results; 29292291 bytes"
+}

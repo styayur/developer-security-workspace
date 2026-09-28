@@ -8,7 +8,7 @@ executable = "gitleaks"
 version_args = ["version"]
 
 [scan]
-args = ["dir", "{workspace}", "--no-banner", "--redact", "--report-format", "sarif", "--report-path", "{output}", "--exit-code", "0"]
+args = ["dir", "{workspace}", "--config", "{config}", "--no-banner", "--redact", "--report-format", "sarif", "--report-path", "{output}", "--exit-code", "0"]
 timeout_seconds = 900
 
 [permissions]

@@ -13,7 +13,7 @@ executable = "gitleaks"
 version_args = ["version"]
 
 [scan]
-args = ["dir", "{workspace}", "--no-banner", "--redact", "--report-format", "sarif", "--report-path", "{output}", "--exit-code", "0"]
+args = ["dir", "{workspace}", "--config", "{config}", "--no-banner", "--redact", "--report-format", "sarif", "--report-path", "{output}", "--exit-code", "0"]
 timeout_seconds = 900
 
 [output]
@@ -48,10 +48,10 @@ Approval hashes manifest bytes, resolved executable path and binary contents. It
 
 - The only executable profile is the exact Gitleaks `dir` vector above, including redaction and a temporary SARIF output file. Command names alone are not a sufficient security policy.
 - Native executable names contain only ASCII alphanumerics, hyphen and underscore. Paths, shell/interpreter names and shell expansion/control characters are rejected.
-- Argument templates recognize `{workspace}`, `{output}`, `{config}` and `{changed_files}`. Only the first two are executable in the reviewed profile; no recursive expansion or arbitrary environment interpolation occurs.
+- Argument templates recognize `{workspace}`, `{output}`, `{config}` and `{changed_files}`. The first three are executable in the reviewed profile; no recursive expansion or arbitrary environment interpolation occurs.
 - Output is SARIF. stdout and custom JSON converters are not enabled in this v1. Built-in trusted Bandit/TruffleHog JSON adapters remain available through their existing providers.
 - Timeout must be 1–900 seconds. Changed-files scans and arbitrary extra args/configs are not supported for extensions.
-- The profile rejects workspace writes and network permission requests. Output uses a temp directory; the scanner runs there rather than discovering workspace config through its working directory.
+- The profile rejects workspace writes and network permission requests. Output and an application-generated config use a temporary directory. The explicit config extends only the scanner binary’s built-in defaults, overriding target-directory configuration discovery. The scanner also runs in that temporary directory.
 - Native binaries still have the user's OS privileges. This runtime does not claim to sandbox hostile binaries. Adding a scanner requires a reviewed invocation profile, tests, and documentation of its filesystem/network behavior.
 
 This restricted executable v1 is intentionally extensible through reviewed profiles without adding an arbitrary script runtime.

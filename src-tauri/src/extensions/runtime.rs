@@ -9,6 +9,8 @@ pub fn validate_profile(manifest: &ExtensionManifest) -> AppResult<()> {
     let expected = [
         "dir",
         "{workspace}",
+        "--config",
+        "{config}",
         "--no-banner",
         "--redact",
         "--report-format",
@@ -92,6 +94,13 @@ impl ScannerProvider for ExtensionProvider {
             .prefix("dsw-extension-")
             .tempdir()?;
         let output = temp.path().join("results.sarif");
+        let config = temp.path().join("gitleaks.toml");
+        // Gitleaks also discovers configuration in the target directory, independent
+        // of cwd. Pin the built-in rules explicitly; no workspace or remote config.
+        std::fs::write(
+            &config,
+            "title = 'DSW reviewed defaults'\n[extend]\nuseDefault = true\n",
+        )?;
         let args = self
             .manifest
             .scan
@@ -100,6 +109,7 @@ impl ScannerProvider for ExtensionProvider {
             .map(|arg| match arg.as_str() {
                 "{workspace}" => request.workspace_root.clone(),
                 "{output}" => output.to_string_lossy().to_string(),
+                "{config}" => config.to_string_lossy().to_string(),
                 _ => arg.clone(),
             })
             .collect::<Vec<_>>();
@@ -108,7 +118,7 @@ impl ScannerProvider for ExtensionProvider {
             .resolved_executable
             .as_deref()
             .ok_or_else(|| AppError::Scanner("Gitleaks is not installed.".into()))?;
-        // Isolated working directory prevents implicit workspace configuration discovery.
+        // Isolated working directory keeps output and ignore-file discovery separate.
         let result = crate::process::run_command(
             Path::new(executable),
             &args,
@@ -134,7 +144,7 @@ mod tests {
     #[ignore = "requires explicitly installed Gitleaks on PATH"]
     async fn real_gitleaks_extension_smoke() {
         let workspace = tempfile::tempdir().unwrap();
-        let secret = ["ghp_", "1234567890abcdefghijklmnopqrstuvwxyz"].concat();
+        let secret = ["ghp_", "7RbK9mPx2VnQ5cFd8HsJ3wZa6YeL4tUo1GiN"].concat();
         let source = format!("github_token = \"{secret}\"\n");
         let input = workspace.path().join("sample.env");
         std::fs::write(&input, &source).unwrap();

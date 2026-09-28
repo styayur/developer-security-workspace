@@ -1,13 +1,13 @@
 # Changelog
 
-## 1.0.0 — 2026-09-27
+## 1.0.0 — 2026-09-28
 
 - Streaming SARIF import, bounded disk staging, global collision-safe matching, progress and transactional cancellation.
 - Hard-memory benchmark harness, Gitleaks extension smoke, desktop walkthrough and release evidence.
 - Hosted MSVC build with self-signed Authenticode application/installer signatures, public certificate and SHA-256 checksums.
 
 
-## Unreleased — Security IR and investigation workflow
+### Security IR and investigation workflow
 
 - Fixed Windows desktop test/app manifests: Common Controls v6 applies to library tests, with a build-local GNU resource override and MSVC manifest input.
 

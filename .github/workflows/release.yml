@@ -60,9 +60,16 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          ./scripts/verify-windows-signature.ps1 -Path src-tauri/target/release/developer-security-workspace.exe -CertificatePath docs/release/DSW-self-signed.cer
           Get-ChildItem src-tauri/target/release/bundle/nsis/*.exe | ForEach-Object {
             ./scripts/verify-windows-signature.ps1 -Path $_.FullName -CertificatePath docs/release/DSW-self-signed.cer
+            # Tauri restores target/release's unsigned original after bundling.
+            # Verify the executable actually shipped inside the signed NSIS archive.
+            $payload = Join-Path $env:RUNNER_TEMP ('dsw-payload-' + [Guid]::NewGuid())
+            & 'C:/Program Files/7-Zip/7z.exe' x $_.FullName "-o$payload" -y
+            if ($LASTEXITCODE -ne 0) { throw 'Installer extraction failed' }
+            $app = @(Get-ChildItem -LiteralPath $payload -Recurse -Filter developer-security-workspace.exe)
+            if ($app.Count -ne 1) { throw 'Expected exactly one packaged application' }
+            ./scripts/verify-windows-signature.ps1 -Path $app[0].FullName -CertificatePath docs/release/DSW-self-signed.cer
           }
       - name: Remove runner private key
         if: always()

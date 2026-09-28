@@ -1,9 +1,8 @@
 # Product screenshots
 
-No fabricated product image is included. Capture the actual built desktop app before adding a README hero image.
+Captured from the actual Windows desktop application on 2026-09-28, at 1440 × 900. The local GNU build uses commit b0c27a8 and displays v1.0.0. Both images show the bundled synthetic Demo Workspace; no UI states were composited or generated.
 
-Expected first asset: `finding-debugger.png`, 1440×900 or larger, showing the synthetic Demo Workspace SQL finding with Monaco and the Trace tab together. Select the second trace step, leave the path selector and Step n/N visible, and ensure file/range highlighting is readable. Do not use a dashboard-only image as the hero.
+- `desktop-trace-v1.png`: SQL finding, Monaco line 8 and Trace step 2/3 after clicking Next step. The path selector remains visible.
+- `desktop-comparison-v1.png`: second scan compared with the first; 6 Existing, 1 Fixed and 1 Changed, with the Existing bucket selected.
 
-Optional assets: `trace-paths.png`, `scan-comparison.png`, `extension-permissions.png`.
-
-Use the real application and bundled synthetic data, remove personal filesystem/user information, and do not composite UI states or generate a mock screenshot. Once captured, place the real image immediately below the README positioning sentence using `![Finding debugger: Monaco source and SARIF trace](docs/assets/finding-debugger.png)`.
+These captures validate the native UI walkthrough, not execution of external scanners or the signed MSVC package. Those checks have separate workflow evidence.

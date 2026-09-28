@@ -6,6 +6,8 @@
 
 A local-first security workbench for debugging findings from source to sink.
 
+![Finding debugger: native Monaco source and SARIF trace](docs/assets/desktop-trace-v1.png)
+
 **Detect → Normalize → Understand → Trace → Compare → Triage**
 
 [Releases](https://github.com/styayur/developer-security-workspace/releases) · [Demo walkthrough](docs/demo-workspace.md) · [Architecture](docs/architecture.md)
@@ -14,9 +16,7 @@ A local-first security workbench for debugging findings from source to sink.
 
 </div>
 
-<!-- Real hero screenshot belongs here: docs/assets/finding-debugger.png.
-     Capture the built app's Finding Debugger + Monaco + Trace; see docs/assets/README.md.
-     No fabricated screenshot or broken image reference is shipped. -->
+
 
 ## Why DSW
 

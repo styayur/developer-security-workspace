@@ -85,6 +85,12 @@ jobs:
           $ErrorActionPreference = "Stop"
           $installers = @(Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe" -ErrorAction Stop)
           if ($installers.Count -eq 0) { throw "No validated NSIS installer was produced" }
+          # GitHub normalizes spaces in asset names; hash the final download names.
+          $installers | ForEach-Object {
+            $name = $_.Name.Replace(' ', '.')
+            if ($name -ne $_.Name) { Rename-Item -LiteralPath $_.FullName -NewName $name }
+          }
+          $installers = @(Get-ChildItem "src-tauri/target/release/bundle/nsis/*.exe")
           @($installers) + @(Get-Item docs/release/DSW-self-signed.cer) | ForEach-Object {
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
             "$hash  $($_.Name)"

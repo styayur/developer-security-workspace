@@ -1,6 +1,6 @@
 use super::{
-    config_string, config_strings, locate_executable, parse_sarif_file, scanner_config,
-    validate_extra_args, ScanContext, ScannerProvider,
+    config_string, config_strings, locate_executable, parse_sarif_file, scan_targets,
+    scanner_config, validate_extra_args, ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
 use crate::process::run_command;
@@ -80,7 +80,7 @@ crate::security_ir::ScannerConfigField { key:"extraArgs".into(),label:"Additiona
             rule_config,
         ];
         args.extend(extra);
-        args.push(request.workspace_root.clone());
+        args.extend(scan_targets(request)?);
         context.log("info", format!("Launching {}", executable.display()));
         let output = run_command(
             &executable,

@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "developer-security-workspace"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "async-trait",
  "blake3",

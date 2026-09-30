@@ -87,6 +87,31 @@ fn lifecycle_corpus_preserves_triage_across_absence_and_reappearance() {
 }
 
 #[test]
+fn current_findings_use_latest_identity_and_exclude_fixed() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = Database::new(&dir.path().join("db")).unwrap();
+    let project = db.open_project(&project(dir.path())).unwrap();
+
+    let first_run = db.create_scan_run(&project.id, "scan").unwrap();
+    db.insert_findings(&[finding(&project, &first_run.id, 10)])
+        .unwrap();
+    complete(&db, &first_run);
+
+    let second_run = db.create_scan_run(&project.id, "scan").unwrap();
+    let latest = finding(&project, &second_run.id, 10);
+    db.insert_findings(std::slice::from_ref(&latest)).unwrap();
+    complete(&db, &second_run);
+
+    let current = db.current_findings(&project.id).unwrap();
+    assert_eq!(current.len(), 1);
+    assert_eq!(current[0].id, latest.id);
+
+    let fixed_run = db.create_scan_run(&project.id, "scan").unwrap();
+    complete(&db, &fixed_run);
+    assert!(db.current_findings(&project.id).unwrap().is_empty());
+}
+
+#[test]
 fn same_rule_collisions_have_independent_triage_and_identity() {
     let dir = tempfile::tempdir().unwrap();
     let db = Database::new(&dir.path().join("db")).unwrap();

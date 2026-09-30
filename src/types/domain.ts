@@ -80,5 +80,5 @@ export interface ExtensionManifest {
   capabilities: ScannerCapabilities; license: { spdx: string; bundled: boolean }; trusted: boolean; sourcePath?: string;
 }
 export interface ScanProgressEvent {
-  scanRunId: string; scannerId: string; scannerName: string; status: ScannerRunStatus; message: string; elapsedMs: number; findingCount: number;
+  projectId: string; scanRunId: string; scannerId: string; scannerName: string; status: ScannerRunStatus; message: string; elapsedMs: number; findingCount: number;
 }

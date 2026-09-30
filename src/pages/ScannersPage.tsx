@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Ban, CheckCircle2, Clipboard, ExternalLink, FolderSearch, Play, RefreshCw, Settings2, ShieldAlert } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { api, onScanCompleted, onScanProgress, openExternal, pickExecutable } from "../lib/api";
 import { ScannerConfigForm } from "../components/ScannerConfigForm";
@@ -19,17 +19,43 @@ export function ScannersPage() {
   const [drafts, setDrafts] = useState<Record<string, ScannerDraft>>({});
   const [mode, setMode] = useState<"full" | "changed">("full");
   const [activeRunId, setActiveRunId] = useState<string>();
+  const activeRunIdRef = useRef<string | undefined>(undefined);
+  const startPendingRef = useRef(false);
   const [progress, setProgress] = useState<Record<string, ScanProgressEvent>>({});
   const [notice, setNotice] = useState<string>();
   useEffect(() => { if (installed.data) setDrafts((current) => Object.fromEntries(installed.data!.map((item) => [item.id, current[item.id] ?? { executablePath: item.configuredPath ?? item.executable, config: {} }]))); }, [installed.data]);
   useEffect(() => {
+    activeRunIdRef.current = undefined;
+    startPendingRef.current = false;
+    setActiveRunId(undefined);
+    setProgress({});
+  }, [project.id]);
+  useEffect(() => {
     const cleanups: Array<() => void> = [];
-    onScanProgress((event) => setProgress((current) => ({ ...current, [event.scannerId]: event }))).then((cleanup) => cleanups.push(cleanup));
-    onScanCompleted((run) => { setActiveRunId(undefined); setProgress({}); queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] }); setNotice("Scan " + run.status + " · " + run.findingCount + " findings"); }).then((cleanup) => cleanups.push(cleanup));
+    const acceptsRun = (scanRunId: string) => {
+      if (activeRunIdRef.current) return activeRunIdRef.current === scanRunId;
+      if (!startPendingRef.current) return false;
+      activeRunIdRef.current = scanRunId;
+      setActiveRunId(scanRunId);
+      return true;
+    };
+    onScanProgress((event) => {
+      if (event.projectId !== project.id || !acceptsRun(event.scanRunId)) return;
+      setProgress((current) => ({ ...current, [event.scannerId]: event }));
+    }).then((cleanup) => cleanups.push(cleanup));
+    onScanCompleted((run) => {
+      if (run.projectId !== project.id || !acceptsRun(run.id)) return;
+      activeRunIdRef.current = undefined;
+      startPendingRef.current = false;
+      setActiveRunId(undefined);
+      setProgress({});
+      queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] });
+      setNotice("Scan " + run.status + " · " + run.findingCount + " findings");
+    }).then((cleanup) => cleanups.push(cleanup));
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [project.id, queryClient]);
   const save = useMutation({ mutationFn: ({ id, draft }: { id: string; draft: ScannerDraft }) => api.configureScanner(project.id, id, draft.executablePath, draft.config), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["scanners", project.id] }); setNotice("Scanner configuration saved."); } });
-  const start = useMutation({ mutationFn: () => api.startScan({ projectId: project.id, scannerIds: selected, workspaceRoot: project.path, mode, scannerConfigs: Object.fromEntries(selected.map((id) => [id, drafts[id]?.config ?? {}])) }), onSuccess: (run) => { setActiveRunId(run.id); setNotice("Scan started. Progress is coming from the Rust runtime."); queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] }); } });
+  const start = useMutation({ mutationFn: () => api.startScan({ projectId: project.id, scannerIds: selected, workspaceRoot: project.path, mode, scannerConfigs: Object.fromEntries(selected.map((id) => [id, drafts[id]?.config ?? {}])) }), onMutate: () => { startPendingRef.current = true; }, onSuccess: (run) => { startPendingRef.current = false; activeRunIdRef.current = run.id; setActiveRunId(run.id); setNotice("Scan started. Progress is coming from the Rust runtime."); queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] }); }, onError: () => { startPendingRef.current = false; } });
   const cancel = useMutation({ mutationFn: () => api.cancelScan(activeRunId!), onSuccess: () => setNotice("Cancellation requested.") });
   const installedSelected = useMemo(() => installed.data?.filter((scanner) => scanner.installed && selected.includes(scanner.id)) ?? [], [installed.data, selected]);
   const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((value) => value !== id) : [...current, id]);

@@ -16,10 +16,18 @@ export function ScansPage() {
   const selectedId = params.get("run") ?? runs.data?.[0]?.id;
   const selected = runs.data?.find((run) => run.id === selectedId) ?? runs.data?.[0];
   const cancel = useMutation({ mutationFn: api.cancelScan, onSuccess: () => queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] }) });
+  useEffect(() => { setProgress({}); }, [project.id]);
   useEffect(() => {
     const cleanups: Array<() => void> = [];
-    onScanProgress((event) => setProgress((current) => ({ ...current, [event.scannerId]: event }))).then((cleanup) => cleanups.push(cleanup));
-    onScanCompleted(() => { setProgress({}); queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] }); }).then((cleanup) => cleanups.push(cleanup));
+    onScanProgress((event) => {
+      if (event.projectId !== project.id) return;
+      setProgress((current) => ({ ...current, [event.scannerId]: event }));
+    }).then((cleanup) => cleanups.push(cleanup));
+    onScanCompleted((run) => {
+      if (run.projectId !== project.id) return;
+      setProgress({});
+      queryClient.invalidateQueries({ queryKey: ["scan-runs", project.id] });
+    }).then((cleanup) => cleanups.push(cleanup));
     return () => cleanups.forEach((cleanup) => cleanup());
   }, [project.id, queryClient]);
   if (runs.isLoading) return <div className="page-loading"><Spinner label="Loading scan history…" /></div>;

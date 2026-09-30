@@ -1,4 +1,10 @@
-# Developer Security Workspace v1.0.0
+# Developer Security Workspace v1.0.1
+
+This release hardens scan lifecycle correctness. A project can now have only one active scanner run, progress and completion events are scoped to the active project and run, Changed Files mode passes explicit changed paths to each scanner, and SARIF export emits only current non-fixed findings. ScannerRun history records the real detected scanner version for each run.
+
+The database schema is unchanged from v1.0.0, so this is a drop-in upgrade. Existing findings, triage notes, and scan history remain in place. The Windows installer and SHA256SUMS are produced by the same signed Windows release workflow.
+
+## v1.0.0 baseline
 
 This update introduces Security IR v1, identity-based triage, explainable layered matching, Changed/Reopened comparisons and thread-aware trace navigation. Findings are queried in bounded SQLite pages and raw results load by artifact reference. The synthetic tutorial includes two scans, fixes, cross-file traces, secrets, dependencies and IaC.
 

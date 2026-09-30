@@ -1,6 +1,6 @@
 use super::{
-    config_string, config_strings, locate_executable, parse_sarif_file, scanner_config,
-    validate_extra_args, ScanContext, ScannerProvider,
+    config_string, config_strings, locate_executable, parse_sarif_file, scan_targets,
+    scanner_config, validate_extra_args, ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
 use crate::process::{run_command, run_command_data};
@@ -59,14 +59,14 @@ impl ScannerProvider for BanditProvider {
         validate_extra_args(&extra)?;
         let temp = Builder::new().prefix("dsw-bandit-").tempdir()?;
         let output_path = temp.path().join("results.sarif");
-        let mut sarif_args = vec![
-            "-r".into(),
-            request.workspace_root.clone(),
+        let mut sarif_args = vec!["-r".into()];
+        sarif_args.extend(scan_targets(request)?);
+        sarif_args.extend([
             "-f".into(),
             "sarif".into(),
             "-o".into(),
             output_path.to_string_lossy().to_string(),
-        ];
+        ]);
         sarif_args.extend(extra.clone());
         context.log("info", format!("Launching {}", executable.display()));
         let primary = run_command(
@@ -89,12 +89,9 @@ impl ScannerProvider for BanditProvider {
             "stderr",
             "SARIF formatter unavailable. Using Bandit JSON compatibility adapter.",
         );
-        let mut json_args = vec![
-            "-r".into(),
-            request.workspace_root.clone(),
-            "-f".into(),
-            "json".into(),
-        ];
+        let mut json_args = vec!["-r".into()];
+        json_args.extend(scan_targets(request)?);
+        json_args.extend(["-f".into(), "json".into()]);
         json_args.extend(extra);
         let output = run_command_data(
             &executable,

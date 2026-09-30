@@ -1,6 +1,6 @@
 use super::{
-    config_string, config_strings, locate_executable, scanner_config, validate_extra_args,
-    ScanContext, ScannerProvider,
+    config_string, config_strings, locate_executable, scan_targets, scanner_config,
+    validate_extra_args, ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
 use crate::process::run_command_data;
@@ -80,7 +80,7 @@ impl ScannerProvider for TruffleHogProvider {
             args.push("--no-verification".into());
         }
         args.extend(extra);
-        args.push(request.workspace_root.clone());
+        args.extend(scan_targets(request)?);
         context.log("info", format!("Launching {}", executable.display()));
         let output = run_command_data(
             &executable,

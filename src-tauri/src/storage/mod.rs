@@ -109,9 +109,18 @@ impl Database {
     }
 
     pub fn create_scan_run(&self, project_id: &str, source: &str) -> AppResult<ScanRun> {
+        self.create_scan_run_with_id(&Uuid::new_v4().to_string(), project_id, source)
+    }
+
+    pub(crate) fn create_scan_run_with_id(
+        &self,
+        id: &str,
+        project_id: &str,
+        source: &str,
+    ) -> AppResult<ScanRun> {
         let project = self.get_project(project_id)?;
         let run = ScanRun {
-            id: Uuid::new_v4().to_string(),
+            id: id.to_string(),
             project_id: project_id.to_string(),
             started_at: Utc::now().to_rfc3339(),
             finished_at: None,
@@ -273,8 +282,13 @@ impl Database {
         Ok(findings.len())
     }
 
+    #[cfg(test)]
     pub fn list_findings(&self, filters: &FindingFilters) -> AppResult<Vec<FindingListItem>> {
         query::list(&*self.lock()?, filters, None, 0)
+    }
+
+    pub fn current_findings(&self, project_id: &str) -> AppResult<Vec<FindingListItem>> {
+        query::current(&*self.lock()?, project_id)
     }
     pub fn finding_page(
         &self,

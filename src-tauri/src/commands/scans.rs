@@ -5,6 +5,7 @@ use crate::security_ir::{
 };
 use crate::state::AppState;
 use chrono::Utc;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -52,8 +53,9 @@ pub async fn start_scan(
             ));
         }
     }
+    let mut providers = Vec::with_capacity(request.scanner_ids.len());
     for scanner_id in &request.scanner_ids {
-        state.provider(scanner_id, &request)?;
+        let provider = state.provider(scanner_id, &request)?;
         if let Some(config) = state
             .database
             .get_scanner_config(&request.project_id, scanner_id)?
@@ -77,8 +79,12 @@ pub async fn start_scan(
                 }
             }
         }
+        providers.push((scanner_id.clone(), provider));
     }
-    let run = state.database.create_scan_run(
+    let run_id = Uuid::new_v4().to_string();
+    let scan_lease = state.begin_scan(&request.project_id, &run_id)?;
+    let run = state.database.create_scan_run_with_id(
+        &run_id,
         &request.project_id,
         if request.mode == "changed" {
             "scan_changed"
@@ -87,30 +93,62 @@ pub async fn start_scan(
         },
     )?;
     let cancellation = CancellationToken::new();
-    state
-        .cancel_tokens
-        .lock()
-        .map_err(|_| AppError::Process("Cancellation registry is unavailable.".into()))?
-        .insert(run.id.clone(), cancellation.clone());
-    for scanner_id in &request.scanner_ids {
-        let provider = state.provider(scanner_id, &request)?;
+    {
+        let mut tokens = state
+            .cancel_tokens
+            .lock()
+            .map_err(|_| AppError::Process("Cancellation registry is unavailable.".into()))?;
+        tokens.insert(run.id.clone(), cancellation.clone());
+    }
+    let mut scanner_versions = HashMap::new();
+    for (scanner_id, provider) in &providers {
+        let configured = request
+            .scanner_configs
+            .get(scanner_id)
+            .and_then(|config| config.get("executablePath"))
+            .and_then(serde_json::Value::as_str)
+            .map(Path::new);
+        let installation = provider.as_ref().detect(configured).await;
+        if !installation.installed {
+            let error = installation.detection_error.unwrap_or_else(|| {
+                format!(
+                    "{} is not installed or could not be detected.",
+                    provider.display_name()
+                )
+            });
+            let _ = state.database.finish_scan_run(&run.id, ScanStatus::Failed);
+            if let Ok(mut tokens) = state.cancel_tokens.lock() {
+                tokens.remove(&run.id);
+            }
+            return Err(AppError::Scanner(error));
+        }
+        if let Some(version) = installation.version {
+            scanner_versions.insert(scanner_id.clone(), version);
+        }
         let now = Utc::now().to_rfc3339();
-        state.database.upsert_scanner_run(&ScannerRun {
+        if let Err(error) = state.database.upsert_scanner_run(&ScannerRun {
             id: Uuid::new_v4().to_string(),
             scan_run_id: run.id.clone(),
             scanner_id: scanner_id.clone(),
             scanner_name: provider.display_name().into(),
             status: ScannerRunStatus::Queued,
-            version: None,
+            version: scanner_versions.get(scanner_id).cloned(),
             started_at: now.clone(),
             finished_at: None,
             duration_ms: None,
             error: None,
             logs: Vec::new(),
-        })?;
+        }) {
+            let _ = state.database.finish_scan_run(&run.id, ScanStatus::Failed);
+            if let Ok(mut tokens) = state.cancel_tokens.lock() {
+                tokens.remove(&run.id);
+            }
+            return Err(error);
+        }
     }
     let state_for_task = state.inner().clone();
     let run_for_task = run.clone();
+    let scanner_versions = Arc::new(scanner_versions);
     tauri::async_runtime::spawn(async move {
         let status = execute_scan(
             app.clone(),
@@ -118,6 +156,7 @@ pub async fn start_scan(
             run_for_task.clone(),
             request,
             cancellation.clone(),
+            scanner_versions,
         )
         .await;
         if let Err(error) = state_for_task
@@ -132,6 +171,7 @@ pub async fn start_scan(
         if let Ok(completed) = state_for_task.database.get_scan_run(&run_for_task.id) {
             let _ = app.emit("scan://completed", &completed);
         }
+        drop(scan_lease);
     });
     state.database.get_scan_run(&run.id)
 }
@@ -155,6 +195,7 @@ async fn execute_scan(
     run: ScanRun,
     request: ScanRequest,
     cancellation: CancellationToken,
+    scanner_versions: Arc<HashMap<String, String>>,
 ) -> ScanStatus {
     let semaphore = Arc::new(Semaphore::new(MAX_CONCURRENT_SCANNERS));
     let mut tasks = JoinSet::new();
@@ -165,12 +206,13 @@ async fn execute_scan(
         let request = request.clone();
         let cancellation = cancellation.clone();
         let semaphore = semaphore.clone();
+        let version = scanner_versions.get(&scanner_id).cloned();
         tasks.spawn(async move {
             let _permit = match semaphore.acquire_owned().await {
                 Ok(permit) => permit,
                 Err(_) => return false,
             };
-            run_scanner(app, state, run, request, scanner_id, cancellation).await
+            run_scanner(app, state, run, request, scanner_id, cancellation, version).await
         });
     }
     let mut successful = 0;
@@ -199,6 +241,7 @@ async fn run_scanner(
     request: ScanRequest,
     scanner_id: String,
     cancellation: CancellationToken,
+    version: Option<String>,
 ) -> bool {
     let provider = match state.provider(&scanner_id, &request) {
         Ok(provider) => provider,
@@ -235,7 +278,7 @@ async fn run_scanner(
     };
     emit_progress(
         &app,
-        &run.id,
+        &run,
         provider.as_ref(),
         ScannerRunStatus::Running,
         "Scanning",
@@ -348,7 +391,7 @@ async fn run_scanner(
         scanner_id: scanner_id.clone(),
         scanner_name: provider.display_name().into(),
         status: status.clone(),
-        version: None,
+        version,
         started_at: started_at.to_rfc3339(),
         finished_at: Some(finished_at),
         duration_ms: Some(elapsed),
@@ -359,7 +402,7 @@ async fn run_scanner(
     let message = error.unwrap_or_else(|| format!("Completed with {finding_count} finding(s)"));
     emit_progress(
         &app,
-        &run.id,
+        &run,
         provider.as_ref(),
         status.clone(),
         &message,
@@ -387,8 +430,8 @@ fn find_queued_scanner_run(
 fn collect_changed_files(workspace_root: &str) -> AppResult<Vec<String>> {
     let mut files = std::collections::BTreeSet::new();
     for args in [
-        vec!["diff", "--name-only", "HEAD"],
-        vec!["ls-files", "--others", "--exclude-standard"],
+        vec!["diff", "--name-only", "-z", "HEAD"],
+        vec!["ls-files", "-z", "--others", "--exclude-standard"],
     ] {
         let output = std::process::Command::new("git")
             .arg("-C")
@@ -403,8 +446,8 @@ fn collect_changed_files(workspace_root: &str) -> AppResult<Vec<String>> {
                 "Changed Files mode requires a Git repository with a valid HEAD.".into(),
             ));
         }
-        for line in String::from_utf8_lossy(&output.stdout).lines() {
-            let file = line.trim().replace('\\', "/");
+        for line in output.stdout.split(|byte| *byte == 0) {
+            let file = String::from_utf8_lossy(line).trim().replace('\\', "/");
             if !file.is_empty() {
                 files.insert(file);
             }
@@ -415,7 +458,7 @@ fn collect_changed_files(workspace_root: &str) -> AppResult<Vec<String>> {
 
 fn emit_progress(
     app: &AppHandle,
-    scan_run_id: &str,
+    run: &ScanRun,
     provider: &dyn ScannerProvider,
     status: ScannerRunStatus,
     message: &str,
@@ -425,7 +468,8 @@ fn emit_progress(
     let _ = app.emit(
         "scan://progress",
         ScanProgressEvent {
-            scan_run_id: scan_run_id.into(),
+            project_id: run.project_id.clone(),
+            scan_run_id: run.id.clone(),
             scanner_id: provider.id().into(),
             scanner_name: provider.display_name().into(),
             status,

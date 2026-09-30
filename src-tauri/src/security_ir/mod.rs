@@ -513,6 +513,7 @@ pub struct ImportResult {
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanProgressEvent {
+    pub project_id: String,
     pub scan_run_id: String,
     pub scanner_id: String,
     pub scanner_name: String,

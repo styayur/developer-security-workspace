@@ -100,12 +100,7 @@ pub async fn export_sarif(
 ) -> AppResult<String> {
     let state = state.inner().clone();
     blocking(move || {
-        let findings = state
-            .database
-            .list_findings(&crate::security_ir::FindingFilters {
-                project_id: Some(project_id),
-                ..Default::default()
-            })?;
+        let findings = state.database.current_findings(&project_id)?;
         let document = build_export_document(&findings);
         let destination = PathBuf::from(destination);
         if let Some(parent) = destination.parent() {
@@ -279,6 +274,7 @@ mod tests {
             scanners: Arc::new(crate::scanners::ScannerRegistry::new()),
             data_dir: root.to_path_buf(),
             cancel_tokens: Arc::new(Mutex::new(HashMap::new())),
+            active_scans: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 

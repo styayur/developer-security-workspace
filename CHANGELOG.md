@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 — 2026-10-01
+
+- Serialized scanner runs per project so concurrent starts cannot corrupt identity occurrence counts, latest findings, lifecycle transitions, or triage state.
+- Scoped progress and completion events to the active project and scan run, preventing another workspace or run from clearing the current scan state.
+- Changed Files mode now passes the changed paths directly to Semgrep, Trivy, TruffleHog, and Bandit instead of scanning the full workspace and post-filtering results.
+- SARIF export now contains one current, non-fixed finding per identity rather than every historical occurrence.
+- ScannerRun history now persists the scanner version detected immediately before each real run.
+
 ## 1.0.0 — 2026-09-28
 
 - Streaming SARIF import, bounded disk staging, global collision-safe matching, progress and transactional cancellation.

@@ -1,6 +1,6 @@
 use super::{
-    config_string, config_strings, locate_executable, parse_sarif_file, scanner_config,
-    validate_extra_args, ScanContext, ScannerProvider,
+    config_string, config_strings, locate_executable, parse_sarif_file, scan_targets,
+    scanner_config, validate_extra_args, ScanContext, ScannerProvider,
 };
 use crate::error::{AppError, AppResult};
 use crate::process::run_command;
@@ -100,42 +100,47 @@ impl ScannerProvider for TrivyProvider {
         let extra = config_strings(config, "extraArgs");
         validate_extra_args(&extra)?;
         let temp = Builder::new().prefix("dsw-trivy-").tempdir()?;
-        let output_path = temp.path().join("results.sarif");
-        let mut args = vec![
-            "fs".into(),
-            "--format".into(),
-            "sarif".into(),
-            "--output".into(),
-            output_path.to_string_lossy().to_string(),
-            "--scanners".into(),
-            scanners.join(","),
-            "--quiet".into(),
-        ];
-        if config
-            .get("skipDbUpdate")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false)
-        {
-            args.push("--skip-db-update".into());
+        let targets = scan_targets(request)?;
+        let mut logs = Vec::with_capacity(targets.len());
+        for (index, target) in targets.into_iter().enumerate() {
+            let output_path = temp.path().join(format!("results-{index}.sarif"));
+            let mut args = vec![
+                "fs".into(),
+                "--format".into(),
+                "sarif".into(),
+                "--output".into(),
+                output_path.to_string_lossy().to_string(),
+                "--scanners".into(),
+                scanners.join(","),
+                "--quiet".into(),
+            ];
+            if config
+                .get("skipDbUpdate")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false)
+            {
+                args.push("--skip-db-update".into());
+            }
+            args.extend(extra.clone());
+            args.push(target);
+            context.log("info", format!("Launching {}", executable.display()));
+            let output = run_command(
+                &executable,
+                &args,
+                Path::new(&request.workspace_root),
+                context.cancel.clone(),
+                context.logs.clone(),
+            )
+            .await?;
+            if !output_path.is_file() {
+                return Err(AppError::Scanner(format!(
+                    "Trivy did not produce SARIF (exit {:?}). {}",
+                    output.status_code,
+                    output.stderr.trim()
+                )));
+            }
+            logs.push(parse_sarif_file(&output_path)?);
         }
-        args.extend(extra);
-        args.push(request.workspace_root.clone());
-        context.log("info", format!("Launching {}", executable.display()));
-        let output = run_command(
-            &executable,
-            &args,
-            Path::new(&request.workspace_root),
-            context.cancel.clone(),
-            context.logs.clone(),
-        )
-        .await?;
-        if !output_path.is_file() {
-            return Err(AppError::Scanner(format!(
-                "Trivy did not produce SARIF (exit {:?}). {}",
-                output.status_code,
-                output.stderr.trim()
-            )));
-        }
-        Ok(vec![parse_sarif_file(&output_path)?])
+        Ok(logs)
     }
 }

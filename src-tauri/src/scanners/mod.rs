@@ -362,6 +362,40 @@ pub fn scanner_config<'a>(request: &'a ScanRequest, scanner_id: &str) -> &'a ser
         .unwrap_or_else(|| EMPTY.get_or_init(|| serde_json::json!({})))
 }
 
+pub fn scan_targets(request: &ScanRequest) -> AppResult<Vec<String>> {
+    if request.mode != "changed" {
+        return Ok(vec![request.workspace_root.clone()]);
+    }
+
+    let root = std::fs::canonicalize(&request.workspace_root).map_err(|error| {
+        AppError::Workspace(format!("Unable to resolve changed-file scan root: {error}"))
+    })?;
+    let mut targets = std::collections::BTreeSet::new();
+    for relative in &request.changed_files {
+        let path = Path::new(relative);
+        if path.is_absolute() {
+            continue;
+        }
+        let candidate = root.join(path);
+        if !candidate.is_file() {
+            continue;
+        }
+        let Ok(canonical) = std::fs::canonicalize(&candidate) else {
+            continue;
+        };
+        if canonical.starts_with(&root) {
+            targets.insert(canonical.to_string_lossy().to_string());
+        }
+    }
+
+    if targets.is_empty() {
+        return Err(AppError::InvalidInput(
+            "Changed Files mode has no existing files to scan.".into(),
+        ));
+    }
+    Ok(targets.into_iter().collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -376,5 +410,23 @@ mod tests {
     fn rejects_shell_like_extra_args() {
         let error = validate_extra_args(&["rm -rf /".into()]).unwrap_err();
         assert!(error.to_string().contains("must start"));
+    }
+
+    #[test]
+    fn changed_mode_targets_only_existing_changed_files() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("changed.py"), "print('changed')\n").unwrap();
+        std::fs::write(dir.path().join("unchanged.py"), "print('unchanged')\n").unwrap();
+        let request = ScanRequest {
+            project_id: "project".into(),
+            scanner_ids: vec!["bandit".into()],
+            workspace_root: dir.path().to_string_lossy().to_string(),
+            mode: "changed".into(),
+            scanner_configs: std::collections::HashMap::new(),
+            changed_files: vec!["changed.py".into(), "deleted.py".into()],
+        };
+        let targets = scan_targets(&request).unwrap();
+        assert_eq!(targets.len(), 1);
+        assert!(targets[0].ends_with("changed.py"));
     }
 }

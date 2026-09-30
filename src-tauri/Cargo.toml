@@ -1,6 +1,6 @@
 [package]
 name = "developer-security-workspace"
-version = "1.0.0"
+version = "1.0.1"
 description = "Local-first SARIF vulnerability explorer and scanner runtime"
 authors = ["Developer Security Workspace contributors"]
 edition = "2021"

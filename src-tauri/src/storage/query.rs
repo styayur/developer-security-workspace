@@ -2,6 +2,7 @@ use super::*;
 use rusqlite::{params_from_iter, types::Value};
 
 pub const LIST_COLUMNS: &str = "id,scan_run_id,scanner_id,scanner_name,rule_id,title,message,severity,category,file_path,start_line,cwe_json,status,triage_note,workspace_fingerprint,identity_id,diff_class";
+const CURRENT_LIST_COLUMNS: &str = "f.id,f.scan_run_id,f.scanner_id,f.scanner_name,f.rule_id,f.title,f.message,f.severity,f.category,f.file_path,f.start_line,f.cwe_json,f.status,f.triage_note,f.workspace_fingerprint,f.identity_id,f.diff_class";
 
 fn predicate(filters: &FindingFilters) -> AppResult<(String, Vec<Value>)> {
     let mut clauses = vec!["1=1".to_string()];
@@ -96,6 +97,20 @@ pub fn count(connection: &Connection, filters: &FindingFilters) -> AppResult<usi
         params_from_iter(values),
         |row| row.get::<_, i64>(0),
     )? as usize)
+}
+
+pub fn current(connection: &Connection, project_id: &str) -> AppResult<Vec<FindingListItem>> {
+    let mut statement = connection.prepare(&format!(
+        r#"SELECT {CURRENT_LIST_COLUMNS}
+           FROM findings f
+           JOIN finding_identities i ON i.id=f.identity_id
+           WHERE f.project_id=?1 AND i.latest_finding_id=f.id AND i.state<>'fixed'
+           ORDER BY CASE f.severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,f.file_path,f.start_line,f.id"#
+    ))?;
+    let result = statement
+        .query_map([project_id], finding_list_from_row)?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    Ok(result)
 }
 
 pub fn diff(

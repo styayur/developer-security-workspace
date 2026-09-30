@@ -87,6 +87,33 @@ fn lifecycle_corpus_preserves_triage_across_absence_and_reappearance() {
 }
 
 #[test]
+fn scanner_version_round_trips_with_scan_history() {
+    let dir = tempfile::tempdir().unwrap();
+    let db = Database::new(&dir.path().join("db")).unwrap();
+    let project = db.open_project(&project(dir.path())).unwrap();
+    let run = db.create_scan_run(&project.id, "scan").unwrap();
+    let scanner_run = ScannerRun {
+        id: Uuid::new_v4().to_string(),
+        scan_run_id: run.id.clone(),
+        scanner_id: "semgrep".into(),
+        scanner_name: "Semgrep".into(),
+        status: ScannerRunStatus::Completed,
+        version: Some("1.95.0".into()),
+        started_at: Utc::now().to_rfc3339(),
+        finished_at: Some(Utc::now().to_rfc3339()),
+        duration_ms: Some(42),
+        error: None,
+        logs: Vec::new(),
+    };
+    db.upsert_scanner_run(&scanner_run).unwrap();
+    db.finish_scan_run(&run.id, ScanStatus::Completed).unwrap();
+
+    let restored = db.get_scan_run(&run.id).unwrap();
+    assert_eq!(restored.scanners.len(), 1);
+    assert_eq!(restored.scanners[0].version.as_deref(), Some("1.95.0"));
+}
+
+#[test]
 fn current_findings_use_latest_identity_and_exclude_fixed() {
     let dir = tempfile::tempdir().unwrap();
     let db = Database::new(&dir.path().join("db")).unwrap();

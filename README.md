@@ -112,6 +112,14 @@ DSW has no account, telemetry, analytics or cloud storage. External scanners may
 - Full CodeQL database analysis and Authenticode signing are outside this Preview.
 - 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory profiling and real desktop screenshots remain separate validation work.
 
+## Community
+
+- **GitHub Issues** for reproducible bugs and scoped engineering tasks.
+- **GitHub Discussions** for implementation ideas, provider/plugin design, architecture, roadmap, showcase, and usage questions.
+- **Discord** for informal feedback and early discussion: https://discord.gg/wA2xy6VPK. It is not the security disclosure channel.
+- **Security** reports must use private vulnerability reporting and [SECURITY.md](SECURITY.md), never Discord or a public issue.
+- Releases use SemVer `vX.Y.Z`, are built from exact tags, and include `SHA256SUMS.txt`; maintainers perform publication.
+
 ## Licensing
 
 Application source: **AGPL-3.0-only** ([LICENSE](LICENSE)). Optional scanners retain their own terms and are not bundled. See [NOTICE](NOTICE.md), [third-party licenses](THIRD_PARTY_LICENSES.md), and [licensing](docs/licensing.md).

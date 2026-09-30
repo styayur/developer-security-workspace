@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/styayur/developer-security-workspace/security/advisories/new
+    about: Report exploitable security issues privately. Do not open a public issue.
+  - name: Design discussions
+    url: https://github.com/styayur/developer-security-workspace/discussions
+    about: Use Discussions for implementation ideas, provider design, architecture, and usage questions.
+  - name: Community and early feedback
+    url: https://discord.gg/wA2xy6VPK
+    about: Questions and early feedback are welcome on Discord. This is not the security disclosure channel.

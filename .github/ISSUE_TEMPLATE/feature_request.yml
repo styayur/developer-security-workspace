@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a scoped workflow, provider, or architecture improvement.
+title: '[Feature]: '
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Investigation or user problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+    validations:
+      required: true
+  - type: dropdown
+    id: boundary
+    attributes:
+      label: Primary boundary
+      options:
+        - Security IR / matching / lifecycle
+        - Scanner provider or adapter
+        - SQLite/storage/migration
+        - React/Monaco desktop UI
+        - Tauri/Rust runtime
+        - Release or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security and compatibility impact
+      description: Explain trust boundaries, migration needs, provider permissions, provenance, and tests.
+    validations:
+      required: true

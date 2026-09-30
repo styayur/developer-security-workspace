@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a reproducible DSW finding, scanner, import, or desktop problem.
+title: '[Bug]: '
+body:
+  - type: input
+    id: version
+    attributes:
+      label: DSW version
+      placeholder: v1.0.1
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows and WebView2 version
+      placeholder: Windows 11 24H2; WebView2 141
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - SARIF import/export
+        - Finding identity or lifecycle
+        - Scanner provider
+        - Desktop UI or navigation
+        - Persistence/migration
+        - Extension/runtime
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: Include scanner name/version, scan mode, and a minimal synthetic SARIF where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized logs, screenshots, or SARIF
+      description: Remove secrets, proprietary code, absolute private paths, and real findings not needed to reproduce.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy and security check
+      options:
+        - label: I removed real secrets, proprietary source, private paths, and unrelated findings.
+          required: true
+        - label: This is not a security vulnerability. I will follow SECURITY.md for private security reports.
+          required: true

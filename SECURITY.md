@@ -1,8 +1,8 @@
 # Security Policy
 
-## Preview status
+## Supported versions
 
-Developer Security Workspace v0.1.0-preview is early software. Do not treat scanner output, fingerprints, triage state, or exported SARIF as a complete security assessment.
+Security fixes target the latest v1 release and current `main`. Older preview builds may receive compatibility guidance only. Do not treat scanner output, fingerprints, triage state, or exported SARIF as a complete security assessment.
 
 ## Reporting a vulnerability
 

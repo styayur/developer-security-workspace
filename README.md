@@ -6,6 +6,8 @@
 
 **Local-first security investigation for SARIF and scanner findings.**
 
+**Status:** 🟢 Production
+
 [Download](https://github.com/styayur/developer-security-workspace/releases/latest) · [Documentation](docs/architecture.md) · [Demo](docs/demo-workspace.md) · [Discussions](https://github.com/styayur/developer-security-workspace/discussions)
 
 [![release](https://img.shields.io/github/v/release/styayur/developer-security-workspace)](https://github.com/styayur/developer-security-workspace/releases/latest)
@@ -112,6 +114,29 @@ DSW has no account, telemetry, analytics or cloud storage. External scanners may
 - Extension execution currently supports the reviewed Gitleaks profile only; arbitrary native commands/custom converters are disabled.
 - Full CodeQL database analysis and Authenticode signing are outside this Preview.
 - 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory profiling and real desktop screenshots remain separate validation work.
+
+## Roadmap
+
+### Current
+
+- Stable SARIF 2.1.0 import and the Finding Debugger workflow on Windows.
+- Scanner adapters with per-scanner provenance and licensing notes.
+- Signed Windows releases with `SHA256SUMS.txt`.
+
+### Next
+
+- Broaden scanner-adapter coverage and triage/export formats.
+- Resolve the remaining upstream GTK/glib advisory when the Tauri dependency chain allows.
+
+### Future
+
+- A documented plugin contract for custom scanners and report converters.
+- Linux/macOS packaging for the same investigation workflow.
+
+### Not planned
+
+- Cloud or telemetry backends; findings stay local by design.
+- Bundling third-party scanners under incompatible licenses.
 
 ## Community
 

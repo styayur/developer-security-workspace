@@ -1,0 +1,5 @@
+<svg width="128" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Developer/_Security/_Workspace">
+  <rect width="128" height="96" rx="20" fill="#0f172a"/>
+  <rect x="3.5" y="3.5" width="89" height="89" rx="17.5" fill="none" stroke="#38bdf8" stroke-width="3"/>
+  <path d="M48 14 L74 23 V44 C74 63 64 75 48 83 C32 75 22 63 22 44 V23 Z" fill="none" stroke="#38bdf8" stroke-width="4"/><circle cx="48" cy="48" r="9" fill="#38bdf8"/><path d="M48 36 V60 M36 48 H60" stroke="#0f172a" stroke-width="3"/>
+</svg>

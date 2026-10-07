@@ -12,7 +12,7 @@
 
 [![release](https://img.shields.io/github/v/release/styayur/developer-security-workspace)](https://github.com/styayur/developer-security-workspace/releases/latest)
 [![build](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml/badge.svg)](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml)
-[![license: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
+[![license: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-black?logo=rust&logoColor=white)]()
 [![Tauri](https://img.shields.io/badge/Tauri-24C8D8?logo=tauri&logoColor=white)]()
 [![security](https://img.shields.io/badge/security-local--first-0f172a)]()

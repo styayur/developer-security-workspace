@@ -1,25 +1,17 @@
-<div align="center">
-
-<img src="docs/assets/brand/logo-mark.svg" width="84" alt="Developer Security Workspace logo" />
-
 # Developer Security Workspace
 
 **Local-first security investigation for SARIF and scanner findings.**
 
-**Status:** 🟢 Production
+**Status:** Alpha assessment — release and workflow evidence exist; sustained user validation and upgrade/recovery review are incomplete. See the [portfolio evidence register](https://github.com/styayur/styayur/blob/main/portfolio/maturity.json).
 
 [Download](https://github.com/styayur/developer-security-workspace/releases/latest) · [Documentation](docs/architecture.md) · [Demo](docs/demo-workspace.md) · [Discussions](https://github.com/styayur/developer-security-workspace/discussions)
 
 [![release](https://img.shields.io/github/v/release/styayur/developer-security-workspace)](https://github.com/styayur/developer-security-workspace/releases/latest)
 [![build](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml/badge.svg)](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml)
 [![license: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-black?logo=rust&logoColor=white)]()
-[![Tauri](https://img.shields.io/badge/Tauri-24C8D8?logo=tauri&logoColor=white)]()
-[![security](https://img.shields.io/badge/security-local--first-0f172a)]()
 
 ![Finding Debugger: native Monaco source and SARIF trace](docs/assets/desktop-trace-v1.png)
 
-</div>
 
 ## Why DSW
 

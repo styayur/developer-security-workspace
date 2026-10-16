@@ -1,21 +1,16 @@
-<div align="center">
-
 # Developer Security Workspace
 
-### Universal SARIF Desktop Client
+**Local-first security investigation for SARIF and scanner findings.**
 
-A local-first security workbench for debugging findings from source to sink.
+**Status:** Alpha assessment — release and workflow evidence exist; sustained user validation and upgrade/recovery review are incomplete. See the [portfolio evidence register](https://github.com/styayur/styayur/blob/main/portfolio/maturity.json).
 
-![Finding debugger: native Monaco source and SARIF trace](docs/assets/desktop-trace-v1.png)
+[Download](https://github.com/styayur/developer-security-workspace/releases/latest) · [Documentation](docs/architecture.md) · [Demo](docs/demo-workspace.md) · [Discussions](https://github.com/styayur/developer-security-workspace/discussions)
 
-**Detect → Normalize → Understand → Trace → Compare → Triage**
+[![release](https://img.shields.io/github/v/release/styayur/developer-security-workspace)](https://github.com/styayur/developer-security-workspace/releases/latest)
+[![build](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml/badge.svg)](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml)
+[![license: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 
-[Releases](https://github.com/styayur/developer-security-workspace/releases) · [Demo walkthrough](docs/demo-workspace.md) · [Architecture](docs/architecture.md)
-
-**No account. No telemetry. No cloud upload by DSW.**
-
-</div>
-
+![Finding Debugger: native Monaco source and SARIF trace](docs/assets/desktop-trace-v1.png)
 
 
 ## Why DSW
@@ -111,6 +106,29 @@ DSW has no account, telemetry, analytics or cloud storage. External scanners may
 - Extension execution currently supports the reviewed Gitleaks profile only; arbitrary native commands/custom converters are disabled.
 - Full CodeQL database analysis and Authenticode signing are outside this Preview.
 - 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory profiling and real desktop screenshots remain separate validation work.
+
+## Roadmap
+
+### Current
+
+- Stable SARIF 2.1.0 import and the Finding Debugger workflow on Windows.
+- Scanner adapters with per-scanner provenance and licensing notes.
+- Signed Windows releases with `SHA256SUMS.txt`.
+
+### Next
+
+- Broaden scanner-adapter coverage and triage/export formats.
+- Resolve the remaining upstream GTK/glib advisory when the Tauri dependency chain allows.
+
+### Future
+
+- A documented plugin contract for custom scanners and report converters.
+- Linux/macOS packaging for the same investigation workflow.
+
+### Not planned
+
+- Cloud or telemetry backends; findings stay local by design.
+- Bundling third-party scanners under incompatible licenses.
 
 ## Community
 

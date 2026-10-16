@@ -1,0 +1,24 @@
+[commands.format]
+program = "cargo"
+args = ["fmt", "--manifest-path", "src-tauri/Cargo.toml", "--all", "--", "--check"]
+timeout_secs = 120
+
+[commands.lint]
+program = "cargo"
+args = ["clippy", "--manifest-path", "src-tauri/Cargo.toml", "--locked", "--all-targets", "--", "-D", "warnings"]
+timeout_secs = 600
+
+[commands.typecheck]
+program = "pnpm"
+args = ["typecheck"]
+timeout_secs = 600
+
+[commands.test]
+program = "cargo"
+args = ["test", "--manifest-path", "src-tauri/Cargo.toml", "--locked", "--features", "desktop"]
+timeout_secs = 1200
+
+[commands.build]
+program = "pnpm"
+args = ["build"]
+timeout_secs = 900

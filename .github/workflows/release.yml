@@ -95,7 +95,7 @@ jobs:
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
             "$hash  $($_.Name)"
           } | Set-Content -LiteralPath "SHA256SUMS.txt" -Encoding utf8
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/')
         with:
           fail_on_unmatched_files: true

@@ -32,7 +32,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.544.0",
     "monaco-editor": "^0.57.0",
-    "motion": "^13.4.4",
+    "motion": "^14.3.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-resizable-panels": "^3.0.6",

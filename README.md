@@ -1,17 +1,16 @@
 # Developer Security Workspace
 
-**Local-first security investigation for SARIF and scanner findings.**
+Local-first security investigation for SARIF and scanner findings.
 
 **Status:** Alpha assessment — release and workflow evidence exist; sustained user validation and upgrade/recovery review are incomplete. See the [portfolio evidence register](https://github.com/styayur/styayur/blob/main/portfolio/maturity.json).
 
-[Download](https://github.com/styayur/developer-security-workspace/releases/latest) · [Documentation](docs/architecture.md) · [Demo](docs/demo-workspace.md) · [Discussions](https://github.com/styayur/developer-security-workspace/discussions)
+[简体中文](README.zh-CN.md) · [Download](https://github.com/styayur/developer-security-workspace/releases/latest) · [Documentation](docs/architecture.md) · [Demo](docs/demo-workspace.md) · [Discussions](https://github.com/styayur/developer-security-workspace/discussions)
 
 [![release](https://img.shields.io/github/v/release/styayur/developer-security-workspace)](https://github.com/styayur/developer-security-workspace/releases/latest)
 [![build](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml/badge.svg)](https://github.com/styayur/developer-security-workspace/actions/workflows/ci.yml)
 [![license: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue)](LICENSE)
 
 ![Finding Debugger: native Monaco source and SARIF trace](docs/assets/desktop-trace-v1.png)
-
 
 ## Why DSW
 
@@ -29,9 +28,9 @@ A finding is a debuggable object: source location, independent data-flow paths, 
 
 **Try Demo Workspace** creates two synthetic scans with SQL injection, cross-file trace, a parameterized-query fix, redacted secret, dependency and IaC findings. [Follow the interactive tutorial](docs/demo-workspace.md).
 
-## Screenshots
+## Screenshot provenance
 
-The first product screenshot must show the real Finding Debugger, Monaco and Trace together. [Capture instructions and asset locations](docs/assets/README.md) are ready; no generated mock screenshot is presented as a working product.
+The image above is an actual Windows native build showing the bundled synthetic Demo Workspace, captured on 28-09-2026. It demonstrates Monaco and Trace interaction, not external scanner execution or verification of the signed MSVC package. See [capture provenance](docs/assets/README.md).
 
 ## Capabilities
 
@@ -78,7 +77,11 @@ Download the Windows x64 NSIS installer and SHA256SUMS from [GitHub Releases](ht
 
 ## Development
 
+Use Node.js 22 (the CI version), pnpm 12.4.2 and stable Rust; native Windows development also needs C++ Build Tools and WebView2. From a full checkout:
+
 ```powershell
+git clone https://github.com/styayur/developer-security-workspace.git
+cd developer-security-workspace
 pnpm install --frozen-lockfile
 pnpm typecheck
 pnpm test
@@ -104,8 +107,8 @@ DSW has no account, telemetry, analytics or cloud storage. External scanners may
 - SARIF import streams through disk-backed staging with cancellation: 1 GiB input, 2 MiB per result/value, 8 MiB metadata. Scanner machine output remains capped at 128 MiB; full Raw inspection at 8 MiB.
 - Duplicate ambiguous findings remain unmatched; v1 does not match across different rules or conflicting symbols.
 - Extension execution currently supports the reviewed Gitleaks profile only; arbitrary native commands/custom converters are disabled.
-- Full CodeQL database analysis and Authenticode signing are outside this Preview.
-- 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory profiling and real desktop screenshots remain separate validation work.
+- Full CodeQL database analysis is not bundled. Self-signed Authenticode is available for v1.x releases; public-CA trust and timestamping are not provided.
+- 100k synthetic imports pass locally (about 1.32 GiB peak in a debug test); low-memory and independent machine validation remain separate from that synthetic measurement.
 
 ## Roadmap
 
@@ -130,11 +133,15 @@ DSW has no account, telemetry, analytics or cloud storage. External scanners may
 - Cloud or telemetry backends; findings stay local by design.
 - Bundling third-party scanners under incompatible licenses.
 
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md), run the applicable checks above, and include a redacted reproduction plus version/platform and untested boundaries. Never commit real findings, source snapshots or credentials.
+
 ## Community
 
 - **GitHub Issues** for reproducible bugs and scoped engineering tasks.
 - **GitHub Discussions** for implementation ideas, provider/plugin design, architecture, roadmap, showcase, and usage questions.
-- **Discord** for informal feedback and early discussion: https://discord.gg/wA2xy6VPK. It is not the security disclosure channel.
+- **Discord** for [informal feedback and early discussion](https://discord.gg/wA2xy6VPK). It is not the security disclosure channel.
 - **Security** reports must use private vulnerability reporting and [SECURITY.md](SECURITY.md), never Discord or a public issue.
 - Releases use SemVer `vX.Y.Z`, are built from exact tags, and include `SHA256SUMS.txt`; maintainers perform publication.
 

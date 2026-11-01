@@ -43,7 +43,7 @@ jobs:
           if ! command -v codeforge >/dev/null 2>&1 || [ "$(codeforge --version)" != "codeforge 0.2.1" ]; then
             cargo install --git https://github.com/styayur/codeforge-engine --tag v0.2.1 --locked codeforge-cli
           fi
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           version: 12.4.2
       - uses: actions/setup-node@v4

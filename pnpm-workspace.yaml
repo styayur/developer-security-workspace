@@ -2,3 +2,5 @@ packages:
   - "."
 allowBuilds:
   esbuild: true
+overrides:
+  monaco-editor>dompurify: 3.4.17

@@ -6,3 +6,11 @@ const storage: Storage = {
   removeItem: (key) => { entries.delete(key); }, setItem: (key, value) => { entries.set(key, value); },
 };
 Object.defineProperty(globalThis, "localStorage", { value: storage, configurable: true });
+// jsdom has no layout engine or ResizeObserver. Browser acceptance separately
+// exercises real separator geometry, pointer/keyboard input and persistence.
+class TestResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+Object.defineProperty(window, "ResizeObserver", { value: TestResizeObserver, configurable: true });

@@ -61,7 +61,7 @@ def main():
             page.on('pageerror', lambda error: errors.append(str(error)))
             url = f'http://127.0.0.1:{server.server_port}/workspace/fixture/findings/finding'
             page.goto(url, wait_until='networkidle')
-            print(json.dumps({'initial_body': page.locator('body').inner_text()[:1600], 'page_errors': errors, 'ipc': page.evaluate('window.__qa')}, ensure_ascii=True), flush=True)
+            (output / 'initial-state.json').write_text(json.dumps({'initial_body': page.locator('body').inner_text()[:1600], 'page_errors': errors, 'ipc': page.evaluate('window.__qa')}, indent=2), encoding='utf-8')
             page.screenshot(path=str(output / 'initial.png'), full_page=True)
             expect(page.get_by_role('heading', name='Synthetic SQL injection', exact=True)).to_be_visible()
             expect(page.locator('.monaco-editor').first).to_be_visible()

@@ -220,7 +220,7 @@ kbd { font-size: 9px; padding: 2px 5px; border: 1px solid hsl(var(--line)); bord
 .monaco-finding-inline { border-bottom: 1px dashed #f97316; }
 .monaco-finding-glyph { background: #f97316; border-radius: 50%; width: 7px !important; height: 7px !important; margin: 7px 0 0 7px; }
 .resize-handle { width: 4px; background: hsl(var(--canvas)); transition: background .12s; }
-.resize-handle[data-resize-handle-active] { background: hsl(var(--accent)); }
+.resize-handle[data-separator="active"], .resize-handle[data-separator="focus"] { background: hsl(var(--accent)); }
 .inspector-pane { height: 100%; overflow: hidden; background: hsl(var(--panel)); border-left: 1px solid hsl(var(--line)); display: grid; grid-template-rows: auto auto minmax(0,1fr); }
 .inspector-summary { padding: 14px; border-bottom: 1px solid hsl(var(--line)); }
 .inspector-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }

@@ -3,8 +3,9 @@ import "../lib/monaco";
 import { ArrowLeft, ArrowRight, Check, Copy, FileCode2, FolderOpen, Info, ListTree, ScrollText, ShieldAlert, Sparkles, Wrench, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
-import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import { api, revealPath } from "../lib/api";
+import { debuggerLayoutStorage } from "../lib/debuggerLayout";
 import { TraceDebugger } from "../components/TraceDebugger";
 import { useAppStore } from "../stores/app";
 import type { FindingLocation, FindingStatus, Project } from "../types/domain";
@@ -24,6 +25,7 @@ export function FindingDetailPage() {
   const [note, setNote] = useState("");
   const [rawError, setRawError] = useState<string>();
   const [fullRaw, setFullRaw] = useState<Record<string, unknown>>();
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({ id: "dsw-finding-debugger", panelIds: ["source", "inspector"], storage: debuggerLayoutStorage });
   const detail = useQuery({ queryKey: ["finding", findingId], queryFn: () => api.getFinding(findingId!), enabled: Boolean(findingId) });
   const navigation = useQuery({ queryKey: ["finding-navigation", findingId], queryFn: () => api.findingNavigation(findingId!), enabled: Boolean(findingId) });
   const finding = detail.data;
@@ -46,12 +48,12 @@ export function FindingDetailPage() {
         <div className="debugger-file"><FileCode2 size={15} /><span>{filePath}</span><strong>:{line}</strong></div>
         <div className="debugger-actions"><Button variant="ghost" onClick={() => copy(filePath)}><Copy size={14} />Copy path</Button><Button variant="ghost" onClick={() => copy(finding.ruleId)}><Copy size={14} />Copy rule</Button><Button variant="ghost" onClick={() => copy(finding.title + "\n" + finding.message + "\n" + filePath + ":" + line)}><Copy size={14} />Copy summary</Button><Button variant="ghost" onClick={() => currentLocation.absolutePath && revealPath(currentLocation.absolutePath)}><FolderOpen size={14} />Open file</Button></div>
       </header>
-      <PanelGroup direction="horizontal" autoSaveId="dsw-finding-debugger" className="debugger-workbench">
-        <Panel defaultSize={62} minSize={35}>
+      <Group orientation="horizontal" defaultLayout={defaultLayout} onLayoutChanged={onLayoutChanged} className="debugger-workbench">
+        <Panel id="source" defaultSize="62%" minSize="35%">
           <div className="source-pane"><div className="source-breadcrumb"><span>{project.name}</span><span>/</span>{filePath.split("/").map((part, index, parts) => <span key={part + index}>{part}{index < parts.length - 1 ? " /" : ""}</span>)}</div>{source.error ? <EmptyState title="Source unavailable" description={source.error instanceof Error ? source.error.message : String(source.error)} /> : <MonacoSource source={source.data} location={currentLocation} theme={theme === "light" ? "vs" : "vs-dark"} />}</div>
         </Panel>
-        <PanelResizeHandle className="resize-handle" />
-        <Panel defaultSize={38} minSize={28}>
+        <Separator className="resize-handle" aria-label="Resize source and inspector" />
+        <Panel id="inspector" defaultSize="38%" minSize="28%">
           <aside className="inspector-pane">
             <div className="inspector-summary"><div className="inspector-title-row"><SeverityBadge severity={finding.severity} /><StatusBadge status={finding.status} /></div><h2>{finding.title}</h2><p>{finding.message}</p><div className="inspector-rule">{finding.scannerName} · {finding.ruleId}</div></div>
             <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="inspector-tabs"><Tabs.List className="tabs-list"><Tabs.Trigger value="overview"><Info size={13} />Overview</Tabs.Trigger><Tabs.Trigger value="trace"><ListTree size={13} />Trace</Tabs.Trigger><Tabs.Trigger value="rule"><ScrollText size={13} />Rule</Tabs.Trigger><Tabs.Trigger value="fix"><Wrench size={13} />Fix</Tabs.Trigger><Tabs.Trigger value="raw"><ShieldAlert size={13} />Raw</Tabs.Trigger></Tabs.List>
@@ -63,7 +65,7 @@ export function FindingDetailPage() {
             </Tabs.Root>
           </aside>
         </Panel>
-      </PanelGroup>
+      </Group>
     </div>
   );
 }

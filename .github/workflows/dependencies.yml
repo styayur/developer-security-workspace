@@ -19,7 +19,7 @@ jobs:
           tool: cargo-audit@0.22.2,cargo-deny@0.20.2
       - run: cargo audit --file src-tauri/Cargo.lock
       - run: cargo deny --manifest-path src-tauri/Cargo.toml --config deny.toml --locked check
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v4
         with:
           node-version: 22

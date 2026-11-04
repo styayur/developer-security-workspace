@@ -1,6 +1,78 @@
 use super::tests::{finding, project};
 use super::*;
 
+#[test]
+fn persisted_counts_backup_corruption_and_overflow_are_checked() -> AppResult<()> {
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("original.db");
+    let db = Database::new(&path)?;
+    let p = db.open_project(&project(dir.path()))?;
+    let run = db.create_scan_run(&p.id, "scan")?;
+    let f = finding(&p, &run.id, 10);
+    db.insert_findings(std::slice::from_ref(&f))?;
+    db.finish_scan_run(&run.id, ScanStatus::Completed)?;
+    let identity = db.get_finding(&f.id)?.lifecycle.identity_id;
+    drop(db);
+    // Closing the sole connection checkpoints WAL before this own-fixture backup.
+    let original = std::fs::read(&path)?;
+    let backup = dir.path().join("backup.db");
+    std::fs::copy(&path, &backup)?;
+    let restored = Database::new(&backup)?;
+    assert_eq!(restored.get_scan_run(&run.id)?.finding_count, 1);
+    assert_eq!(restored.get_finding(&f.id)?.lifecycle.occurrence_count, 1);
+    {
+        let connection = restored.lock()?;
+        connection.execute(
+            "UPDATE scan_runs SET finding_count=-1 WHERE id=?1",
+            [&run.id],
+        )?;
+    }
+    assert!(restored.get_scan_run(&run.id).is_err());
+    assert!(restored.list_scan_runs(&p.id, 10).is_err());
+    {
+        let connection = restored.lock()?;
+        connection.execute(
+            "UPDATE scan_runs SET finding_count=1 WHERE id=?1",
+            [&run.id],
+        )?;
+        connection.execute(
+            "UPDATE finding_identities SET occurrence_count=-1 WHERE id=?1",
+            [&identity],
+        )?;
+    }
+    assert!(restored.get_finding(&f.id).is_err());
+    {
+        let connection = restored.lock()?;
+        connection.execute(
+            "UPDATE finding_identities SET occurrence_count=?1 WHERE id=?2",
+            params![i64::MAX, identity],
+        )?;
+    }
+    let next = restored.create_scan_run(&p.id, "scan")?;
+    let repeated = finding(&p, &next.id, 10);
+    assert!(restored
+        .insert_findings(std::slice::from_ref(&repeated))
+        .is_err());
+    assert!(
+        restored.get_finding(&repeated.id).is_err(),
+        "failed count encoding must roll back the finding transaction"
+    );
+    assert_eq!(
+        restored.lock()?.query_row(
+            "SELECT occurrence_count FROM finding_identities WHERE id=?1",
+            [&identity],
+            |row| row.get::<_, i64>(0)
+        )?,
+        i64::MAX
+    );
+    assert_eq!(
+        std::fs::read(&path)?,
+        original,
+        "corrupt-backup tests must not alter the original fixture"
+    );
+    Ok(())
+}
+
 fn complete(db: &Database, run: &ScanRun) {
     db.upsert_scanner_run(&ScannerRun {
         id: Uuid::new_v4().to_string(),

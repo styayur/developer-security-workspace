@@ -1,4 +1,5 @@
 use super::*;
+use crate::sql_integer::{encode_index, read_index};
 use rusqlite::{params_from_iter, types::Value};
 
 pub const LIST_COLUMNS: &str = "id,scan_run_id,scanner_id,scanner_name,rule_id,title,message,severity,category,file_path,start_line,cwe_json,status,triage_note,workspace_fingerprint,identity_id,diff_class";
@@ -81,8 +82,8 @@ pub fn list(
     let mut sql = format!("SELECT {LIST_COLUMNS} FROM findings WHERE {where_sql} ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,file_path,start_line,id");
     if let Some(limit) = limit {
         sql.push_str(" LIMIT ? OFFSET ?");
-        values.push(Value::Integer(limit as i64));
-        values.push(Value::Integer(offset as i64));
+        values.push(Value::Integer(encode_index(limit)?));
+        values.push(Value::Integer(encode_index(offset)?));
     }
     let mut stmt = connection.prepare(&sql)?;
     let result = stmt
@@ -95,8 +96,8 @@ pub fn count(connection: &Connection, filters: &FindingFilters) -> AppResult<usi
     Ok(connection.query_row(
         &format!("SELECT COUNT(*) FROM findings WHERE {where_sql}"),
         params_from_iter(values),
-        |row| row.get::<_, i64>(0),
-    )? as usize)
+        |row| read_index(row, 0),
+    )?)
 }
 
 pub fn current(connection: &Connection, project_id: &str) -> AppResult<Vec<FindingListItem>> {
@@ -140,12 +141,17 @@ pub fn diff(
         let count = connection.query_row(
             &format!("SELECT COUNT(*) FROM findings f WHERE {condition}"),
             params![current, previous],
-            |r| r.get::<_, i64>(0),
-        )? as usize;
+            |r| read_index(r, 0),
+        )?;
         let mut stmt = connection.prepare(&format!("SELECT {LIST_COLUMNS} FROM findings f WHERE {condition} ORDER BY file_path,start_line,id LIMIT ?3 OFFSET ?4"))?;
         let rows = stmt
             .query_map(
-                params![current, previous, limit as i64, offset as i64],
+                params![
+                    current,
+                    previous,
+                    encode_index(limit)?,
+                    encode_index(offset)?
+                ],
                 finding_list_from_row,
             )?
             .collect::<rusqlite::Result<Vec<_>>>()?;

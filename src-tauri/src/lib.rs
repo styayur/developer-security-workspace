@@ -15,6 +15,7 @@ mod sarif;
 mod scanners;
 mod secret_redaction;
 mod security_ir;
+mod sql_integer;
 #[cfg(feature = "desktop")]
 mod state;
 mod storage;

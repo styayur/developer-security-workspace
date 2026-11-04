@@ -1,3 +1,4 @@
+use crate::sql_integer::{encode_index, read_index};
 mod lifecycle;
 mod migrations;
 mod persist;
@@ -96,7 +97,7 @@ impl Database {
                FROM recent_projects r JOIN projects p ON p.id=r.project_id
                ORDER BY r.opened_at DESC LIMIT ?1"#,
         )?;
-        let rows = statement.query_map(params![limit as i64], |row| {
+        let rows = statement.query_map(params![encode_index(limit)?], |row| {
             Ok(RecentProject {
                 id: row.get(0)?,
                 name: row.get(1)?,
@@ -226,8 +227,9 @@ impl Database {
             let mut statement = connection.prepare(
                 "SELECT id,project_id,started_at,finished_at,git_branch,git_commit,status,finding_count,duration_ms,source FROM scan_runs WHERE project_id=?1 ORDER BY started_at DESC LIMIT ?2",
             )?;
-            let rows = statement.query_map(params![project_id, limit as i64], scan_run_from_row)?;
-            rows.filter_map(Result::ok).collect::<Vec<_>>()
+            let rows = statement
+                .query_map(params![project_id, encode_index(limit)?], scan_run_from_row)?;
+            rows.collect::<rusqlite::Result<Vec<_>>>()?
         };
         for run in &mut runs {
             run.scanners = self.scanner_runs(&run.id)?;
@@ -323,7 +325,7 @@ impl Database {
             [finding_id],
             |row| row.get(0),
         )?;
-        Ok(connection.query_row("WITH ordered AS (SELECT id,LAG(id) OVER w AS previous,LEAD(id) OVER w AS next,ROW_NUMBER() OVER w AS position,COUNT(*) OVER () AS total FROM findings WHERE project_id=?1 WINDOW w AS (ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,file_path,start_line,id)) SELECT previous,next,position,total FROM ordered WHERE id=?2",params![project,finding_id],|row|Ok(serde_json::json!({"previous":row.get::<_,Option<String>>(0)?,"next":row.get::<_,Option<String>>(1)?,"position":row.get::<_,usize>(2)?,"total":row.get::<_,usize>(3)?})))?)
+        Ok(connection.query_row("WITH ordered AS (SELECT id,LAG(id) OVER w AS previous,LEAD(id) OVER w AS next,ROW_NUMBER() OVER w AS position,COUNT(*) OVER () AS total FROM findings WHERE project_id=?1 WINDOW w AS (ORDER BY CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 ELSE 4 END,file_path,start_line,id)) SELECT previous,next,position,total FROM ordered WHERE id=?2",params![project,finding_id],|row|Ok(serde_json::json!({"previous":row.get::<_,Option<String>>(0)?,"next":row.get::<_,Option<String>>(1)?,"position":read_index(row, 2)?,"total":read_index(row, 3)?})))?)
     }
 
     pub fn get_finding(&self, finding_id: &str) -> AppResult<Finding> {
@@ -339,17 +341,17 @@ impl Database {
         if let Some(reference) = &finding.raw_reference {
             if !reference.artifact_id.is_empty() {
                 let raw: String = connection.query_row("SELECT raw_json FROM scan_artifact_results WHERE artifact_id=?1 AND run_index=?2 AND result_index=?3",
-                    params![reference.artifact_id,reference.run_index as i64,reference.result_index as i64], |row| row.get(0))?;
+                    params![reference.artifact_id,encode_index(reference.run_index)?,encode_index(reference.result_index)?], |row| row.get(0))?;
                 finding.raw_sarif = serde_json::from_str(&raw)?;
             }
         }
         let identity = connection.query_row("SELECT first_seen,last_seen,occurrence_count,fixed_at,reopened_at,state FROM finding_identities WHERE id=?1", [&finding.lifecycle.identity_id], |row| {
-            Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,row.get::<_,i64>(2)?,row.get::<_,Option<String>>(3)?,row.get::<_,Option<String>>(4)?,row.get::<_,String>(5)?))
+            Ok((row.get::<_,String>(0)?,row.get::<_,String>(1)?,read_index(row, 2)?,row.get::<_,Option<String>>(3)?,row.get::<_,Option<String>>(4)?,row.get::<_,String>(5)?))
         }).optional()?;
         if let Some((first, last, count, fixed, reopened, state)) = identity {
             finding.lifecycle.first_seen = first;
             finding.lifecycle.last_seen = last;
-            finding.lifecycle.occurrence_count = count as usize;
+            finding.lifecycle.occurrence_count = count;
             finding.lifecycle.fixed_at = fixed;
             finding.lifecycle.reopened_at = reopened;
             finding.lifecycle.state = parse_enum(&state);
@@ -399,7 +401,7 @@ impl Database {
                     row.get::<_, String>(0)?,
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
-                    row.get::<_, usize>(3)?,
+                    read_index(row, 3)?,
                 ))
             })?;
             for row in rows {
@@ -422,7 +424,7 @@ impl Database {
             summary.scanner_count = connection.query_row(
                 "SELECT COUNT(DISTINCT scanner_id) FROM findings WHERE scan_run_id=?1",
                 [&run.id],
-                |row| row.get(0),
+                |row| read_index(row, 0),
             )?;
         }
         Ok(summary)
@@ -589,7 +591,12 @@ impl Database {
                     for (index, result) in results.drain(..).enumerate() {
                         tx.execute(
                             "INSERT INTO scan_artifact_results VALUES (?1,?2,?3,?4)",
-                            params![id, ri as i64, index as i64, serde_json::to_string(&result)?],
+                            params![
+                                id,
+                                encode_index(ri)?,
+                                encode_index(index)?,
+                                serde_json::to_string(&result)?
+                            ],
                         )?;
                     }
                 }
@@ -621,9 +628,7 @@ impl Database {
         for (id, raw) in artifacts {
             let mut value: serde_json::Value = serde_json::from_str(&raw)?;
             let mut stmt = connection.prepare("SELECT run_index,raw_json FROM scan_artifact_results WHERE artifact_id=?1 ORDER BY run_index,result_index")?;
-            let rows = stmt.query_map([id], |r| {
-                Ok((r.get::<_, usize>(0)?, r.get::<_, String>(1)?))
-            })?;
+            let rows = stmt.query_map([id], |r| Ok((read_index(r, 0)?, r.get::<_, String>(1)?)))?;
             for row in rows {
                 let (ri, json) = row?;
                 if let Some(results) = value["runs"][ri]["results"].as_array_mut() {
@@ -690,7 +695,7 @@ fn scan_run_from_row(row: &Row<'_>) -> rusqlite::Result<ScanRun> {
         git_branch: row.get(4)?,
         git_commit: row.get(5)?,
         status: parse_enum(&row.get::<_, String>(6)?),
-        finding_count: row.get::<_, i64>(7)? as usize,
+        finding_count: read_index(row, 7)?,
         duration_ms: row.get::<_, Option<i64>>(8)?.map(|value| value as u64),
         source: row.get(9)?,
         security_ir_version: SECURITY_IR_VERSION,

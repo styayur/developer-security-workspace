@@ -1,6 +1,7 @@
 //! Streaming SARIF staging. JSON member order is irrelevant; raw secrets never reach staging.
 use crate::error::{AppError, AppResult};
 use crate::secret_redaction::SecretRedactor;
+use crate::sql_integer::encode_index;
 use rusqlite::{params, Connection};
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::{Deserializer, Serialize};
@@ -200,7 +201,10 @@ impl<'de> Visitor<'de> for Run<'_> {
             .db
             .execute(
                 "INSERT INTO runs VALUES(?1,?2)",
-                params![self.1, value.to_string()],
+                params![
+                    encode_index(self.1).map_err(A::Error::custom)?,
+                    value.to_string()
+                ],
             )
             .map_err(A::Error::custom)?;
         Ok(())
@@ -229,7 +233,12 @@ impl<'de> Visitor<'de> for Results<'_> {
                 .db
                 .prepare_cached("INSERT INTO results(run,idx,raw,native) VALUES(?1,?2,?3,?4)")
                 .map_err(A::Error::custom)?
-                .execute(params![self.1, index, redacted.to_string(), native])
+                .execute(params![
+                    encode_index(self.1).map_err(A::Error::custom)?,
+                    encode_index(index).map_err(A::Error::custom)?,
+                    redacted.to_string(),
+                    native
+                ])
                 .map_err(A::Error::custom)?;
             index += 1;
             self.0.results.set(self.0.results.get() + 1);

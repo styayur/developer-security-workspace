@@ -2,6 +2,7 @@
 use super::*;
 use crate::matching::Candidate;
 use crate::sarif::streaming::{check_cancel, ImportProgress, Staged};
+use crate::sql_integer::{encode_index, read_index};
 use tokio_util::sync::CancellationToken;
 
 pub fn import(
@@ -45,8 +46,11 @@ fn normalize(
     let tx = staged.connection.transaction()?;
     let mut total = 0usize;
     for ri in 0..staged.runs {
-        let header: String =
-            tx.query_row("SELECT header FROM runs WHERE idx=?1", [ri], |r| r.get(0))?;
+        let header: String = tx.query_row(
+            "SELECT header FROM runs WHERE idx=?1",
+            [encode_index(ri)?],
+            |r| r.get(0),
+        )?;
         let producer = serde_json::from_str(&header)?;
         let mut log = crate::sarif::SarifLog {
             version: "2.1.0".into(),
@@ -55,10 +59,10 @@ fn normalize(
         };
         let mut statement =
             tx.prepare("SELECT idx,raw,native FROM results WHERE run=?1 ORDER BY idx")?;
-        let mut rows = statement.query([ri])?;
+        let mut rows = statement.query([encode_index(ri)?])?;
         while let Some(row) = rows.next()? {
             check_cancel(cancel)?;
-            let index: usize = row.get(0)?;
+            let index = read_index(row, 0)?;
             let raw: String = row.get(1)?;
             log.runs[0].results = vec![serde_json::from_str(&raw)?];
             let mut findings =
@@ -105,8 +109,8 @@ fn commit(
     // Temporary tables spill to disk; cap the main page cache for large identity histories.
     connection.execute_batch("PRAGMA temp_store=FILE; PRAGMA cache_size=-8192;")?;
     let interrupt = cancel.clone();
-    connection.progress_handler(10_000, Some(move || interrupt.is_cancelled()));
     let result = (|| -> AppResult<()> {
+        connection.progress_handler(10_000, Some(move || interrupt.is_cancelled()))?;
         let tx = connection.transaction()?;
         tx.execute_batch("CREATE TEMP TABLE import_matches(current_id TEXT PRIMARY KEY,previous_id TEXT UNIQUE,method TEXT);")?;
         for (table, source) in [
@@ -160,7 +164,7 @@ fn commit(
             let previous = if let Some(id) = identity {
                 let old: Candidate = serde_json::from_str(&row.get::<_, String>(4)?)?;
                 Some(tx.query_row("SELECT id,first_seen,last_seen,occurrence_count,fixed_at,reopened_at,state,status,note FROM finding_identities WHERE id=?1",[id],|r|Ok((old,
-                    FindingLifecycle {identity_id:r.get(0)?,first_seen:r.get(1)?,last_seen:r.get(2)?,occurrence_count:r.get(3)?,fixed_at:r.get(4)?,reopened_at:r.get(5)?,state:parse_enum(&r.get::<_,String>(6)?),matched_by:None},
+                    FindingLifecycle {identity_id:r.get(0)?,first_seen:r.get(1)?,last_seen:r.get(2)?,occurrence_count:read_index(r, 3)?,fixed_at:r.get(4)?,reopened_at:r.get(5)?,state:parse_enum(&r.get::<_,String>(6)?),matched_by:None},
                     parse_enum(&r.get::<_,String>(7)?),r.get(8)?)))?)
             } else {
                 None
@@ -187,7 +191,7 @@ fn commit(
                 .as_mut()
                 .ok_or_else(|| AppError::Sarif("Missing result reference".into()))?;
             reference.artifact_id = artifact.clone();
-            tx.execute("INSERT INTO scan_artifact_results(artifact_id,run_index,result_index,raw_json) SELECT ?1,run,idx,raw FROM import_stage.results WHERE run=?2 AND idx=?3",params![artifact,reference.run_index,reference.result_index])?;
+            tx.execute("INSERT INTO scan_artifact_results(artifact_id,run_index,result_index,raw_json) SELECT ?1,run,idx,raw FROM import_stage.results WHERE run=?2 AND idx=?3",params![artifact,encode_index(reference.run_index)?,encode_index(reference.result_index)?])?;
             let assigned = lifecycle::assign_one(
                 &tx,
                 &finding,
@@ -217,14 +221,16 @@ fn commit(
         let duration = chrono::DateTime::parse_from_rfc3339(&run.started_at)
             .map(|s| (now - s.with_timezone(&Utc)).num_milliseconds().max(0))
             .unwrap_or_default();
-        tx.execute("UPDATE scan_runs SET status='completed',finished_at=?1,finding_count=?2,duration_ms=?3 WHERE id=?4",params![now.to_rfc3339(),count,duration,run.id])?;
+        tx.execute("UPDATE scan_runs SET status='completed',finished_at=?1,finding_count=?2,duration_ms=?3 WHERE id=?4",params![now.to_rfc3339(),encode_index(count)?,duration,run.id])?;
         lifecycle::finalize(&tx, &run.id, &ScanStatus::Completed)?;
         check_cancel(cancel)?;
         tx.commit()?;
         Ok(())
     })();
-    connection.progress_handler(0, None::<fn() -> bool>);
+    let reset = connection.progress_handler(0, None::<fn() -> bool>);
     // Drop only this import's temporary working tables; never application tables.
     let cleanup=connection.execute_batch("DROP TABLE IF EXISTS temp.import_matches; DROP TABLE IF EXISTS temp.import_current; DROP TABLE IF EXISTS temp.import_previous; DETACH DATABASE import_stage;");
-    result.and(cleanup.map_err(AppError::from))
+    result
+        .and(reset.map_err(AppError::from))
+        .and(cleanup.map_err(AppError::from))
 }

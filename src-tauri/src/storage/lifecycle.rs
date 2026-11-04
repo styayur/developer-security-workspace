@@ -1,5 +1,6 @@
 use super::*;
 use crate::matching::{Candidate, FindingMatcher};
+use crate::sql_integer::{encode_index, read_index};
 
 pub struct AssignedFinding {
     pub lifecycle: FindingLifecycle,
@@ -29,7 +30,7 @@ pub fn assign(tx: &Connection, findings: &[Finding]) -> AppResult<Vec<AssignedFi
                         identity_id: row.get(1)?,
                         first_seen: row.get(2)?,
                         last_seen: row.get(3)?,
-                        occurrence_count: row.get::<_, i64>(4)? as usize,
+                        occurrence_count: read_index(row, 4)?,
                         fixed_at: row.get(5)?,
                         reopened_at: row.get(6)?,
                         state: parse_enum(&row.get::<_, String>(7)?),
@@ -99,7 +100,11 @@ pub fn assign_one(
             f.lifecycle.reopened_at = Some(now.to_string());
         }
         f.lifecycle.fixed_at = None;
-        f.lifecycle.occurrence_count += 1;
+        f.lifecycle.occurrence_count = f
+            .lifecycle
+            .occurrence_count
+            .checked_add(1)
+            .ok_or_else(|| AppError::InvalidInput("Occurrence count overflow".into()))?;
         f.lifecycle.matched_by = Some(matched.clone());
         f.status = if is_triage(status) {
             status.clone()
@@ -124,7 +129,7 @@ pub fn assign_one(
               occurrence_count=excluded.occurrence_count,fixed_at=excluded.fixed_at,reopened_at=excluded.reopened_at,
               state=excluded.state,status=excluded.status,note=excluded.note,candidate_json=excluded.candidate_json"#,
             params![f.lifecycle.identity_id,original.project_id,original.scanner_id,original.id,f.lifecycle.first_seen,now,
-                f.lifecycle.occurrence_count as i64,f.lifecycle.fixed_at,f.lifecycle.reopened_at,enum_string(&f.lifecycle.state)?,
+                encode_index(f.lifecycle.occurrence_count)?,f.lifecycle.fixed_at,f.lifecycle.reopened_at,enum_string(&f.lifecycle.state)?,
                 enum_string(&f.status)?,f.triage_note,serde_json::to_string(&candidate)?])?;
     Ok(f)
 }

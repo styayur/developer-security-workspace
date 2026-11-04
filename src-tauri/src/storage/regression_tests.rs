@@ -82,8 +82,9 @@ fn complete(db: &Database, run: &ScanRun) {
         status: ScannerRunStatus::Completed,
         ..Default::default()
     })
-    .unwrap();
-    db.finish_scan_run(&run.id, ScanStatus::Completed).unwrap();
+    .expect("persist completed synthetic scanner run");
+    db.finish_scan_run(&run.id, ScanStatus::Completed)
+        .expect("finish synthetic fixture scan");
 }
 
 #[test]

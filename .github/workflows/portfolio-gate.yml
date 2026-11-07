@@ -1,5 +1,5 @@
 # Caller template. Copy to a public repository as .github/workflows/portfolio-gate.yml.
-# Replace d34be191d8578b891a1db2c54308d154520389e6 with the reviewed portfolio-governance commit SHA.
+# Replace be210b2d3761a2c7aad67fb3ca0f900e08e9b8fa with the reviewed portfolio-governance commit SHA.
 name: Portfolio Evidence Gate
 
 on:
@@ -9,7 +9,7 @@ on:
 permissions:
   actions: read
   checks: write
-  contents: read
+  contents: write
   issues: write
   pull-requests: write
   security-events: read
@@ -17,9 +17,9 @@ permissions:
 
 jobs:
   portfolio:
-    uses: styayur/portfolio-governance/.github/workflows/reusable-portfolio-gate.yml@d34be191d8578b891a1db2c54308d154520389e6
+    uses: styayur/portfolio-governance/.github/workflows/reusable-portfolio-gate.yml@be210b2d3761a2c7aad67fb3ca0f900e08e9b8fa
     with:
       pr_number: ${{ github.event.pull_request.number }}
       head_sha: ${{ github.event.pull_request.head.sha }}
       base_sha: ${{ github.event.pull_request.base.sha }}
-      central_sha: d34be191d8578b891a1db2c54308d154520389e6
+      central_sha: be210b2d3761a2c7aad67fb3ca0f900e08e9b8fa

@@ -44,6 +44,67 @@ jobs:
         with:
           languages: actions
           build-mode: none
+      - name: Require fresh run-bound SARIF output directory
+        env:
+          SARIF_OUTPUT_DIR: ${{ runner.temp }}/agentic-actions-codeql-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          directory = Path(os.environ['SARIF_OUTPUT_DIR'])
+          if directory.exists() or directory.is_symlink() or not directory.resolve().is_relative_to(Path(os.environ['RUNNER_TEMP']).resolve()):
+              raise ValueError('SARIF output directory must be new and inside runner.temp')
+          directory.mkdir()
+          PY
       - uses: github/codeql-action/analyze@9b3254085494b55a0f7c4c2b3d2d52cc712ce370
         with:
           category: agentic-actions
+          upload: never
+          upload-database: false
+          output: ${{ runner.temp }}/agentic-actions-codeql-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Enforce actual supplemental Actions CodeQL findings
+        env:
+          SARIF_OUTPUT_DIR: ${{ runner.temp }}/agentic-actions-codeql-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          
+          def validate(data):
+              if data.get('version') != '2.1.0' or not isinstance(data.get('runs'), list) or not data['runs']:
+                  raise ValueError('Missing or malformed CodeQL SARIF analysis')
+              findings = 0
+              for run in data['runs']:
+                  if run.get('tool', {}).get('driver', {}).get('name') != 'CodeQL':
+                      raise ValueError('Unexpected SARIF producer')
+                  if not str(run.get('automationDetails', {}).get('id', '')).startswith('agentic-actions'):
+                      raise ValueError('Unexpected Actions analysis category')
+                  if not isinstance(run.get('results'), list):
+                      raise ValueError('Missing CodeQL result set')
+                  if any(item.get('executionSuccessful') is False for item in run.get('invocations', [])):
+                      raise ValueError('CodeQL recorded unsuccessful execution')
+                  findings += len(run['results'])
+              if findings:
+                  raise ValueError(f'Actions CodeQL found {findings} result(s); inspect retained SARIF')
+          
+          if __name__ == '__main__':
+              directory = Path(os.environ['SARIF_OUTPUT_DIR'])
+              if directory.is_symlink() or not directory.resolve().is_relative_to(Path(os.environ['RUNNER_TEMP']).resolve()):
+                  raise ValueError('SARIF output is outside the trusted runner temporary directory')
+              files = sorted(directory.glob('*.sarif'))
+              if not files:
+                  raise ValueError('CodeQL produced no SARIF evidence')
+              for path in files:
+                  if path.is_symlink() or path.stat().st_size > 20000000:
+                      raise ValueError('Unexpected SARIF artifact')
+                  validate(json.loads(path.read_text(encoding='utf-8')))
+              print(f'Validated {len(files)} actual Actions CodeQL SARIF file(s), zero findings.')
+          PY
+      - name: Retain actual supplemental Actions CodeQL evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: actions-codeql-sarif
+          path: ${{ runner.temp }}/agentic-actions-codeql-${{ github.run_id }}-${{ github.run_attempt }}/*.sarif
+          if-no-files-found: error
+          retention-days: 30

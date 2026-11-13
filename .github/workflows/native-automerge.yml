@@ -55,6 +55,7 @@ jobs:
               ".github/CODEOWNERS",
               "CODEOWNERS",
               ".github/dependabot.yml",
+              ".github/dependabot.yaml",
           )
 
           def gh(args):

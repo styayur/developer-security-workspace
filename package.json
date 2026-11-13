@@ -28,11 +28,11 @@
     "@tanstack/react-virtual": "^3.14.26",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
-    "@tauri-apps/plugin-opener": "^2.7.2",
+    "@tauri-apps/plugin-opener": "^2.7.3",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.70.0",
+    "lucide-react": "^1.71.0",
     "monaco-editor": "^0.57.0",
-    "motion": "^14.11.1",
+    "motion": "^14.12.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-resizable-panels": "^4.21.0",
@@ -45,7 +45,7 @@
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^14.6.9",
-    "@types/node": "^24.3.1",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
@@ -54,7 +54,7 @@
     "postcss": "^8.5.31",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.2",
-    "vite": "^7.3.7",
+    "vite": "^7.3.8",
     "vitest": "^5.1.0"
   }
 }

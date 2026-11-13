@@ -1,0 +1,118 @@
+name: Native auto-merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: native-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  enable:
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Read Dependabot metadata
+        id: meta
+        if: github.event.pull_request.user.id == 49699333
+        continue-on-error: true
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ github.token }}
+      - name: Enable auto-merge when the author and files are eligible
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          AUTHOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+        run: |
+          python3 - << 'PY'
+          import json, os, subprocess, sys
+
+          OWNER_ID = 324560549
+          OWNER_LOGIN = "styayur"
+          DEPENDABOT_ID = 49699333
+          DEPENDABOT_LOGIN = "dependabot[bot]"
+          ALLOWED = {"version-update:semver-patch", "version-update:semver-minor"}
+          SENSITIVE = (
+              ".github/workflows/",
+              ".github/actions/",
+              ".github/CODEOWNERS",
+              "CODEOWNERS",
+              ".github/dependabot.yml",
+          )
+
+          def gh(args):
+              result = subprocess.run(["gh", *args], check=False, capture_output=True, text=True)
+              if result.returncode != 0:
+                  sys.stderr.write(result.stderr)
+                  raise SystemExit(result.returncode)
+              return result.stdout
+
+          def sensitive(path):
+              path = path.replace("\\", "/")
+              return any(path == prefix or path.startswith(prefix) for prefix in SENSITIVE)
+
+          author_id = int(os.environ["AUTHOR_ID"])
+          author_login = os.environ["AUTHOR_LOGIN"]
+          head_repo = os.environ["HEAD_REPO"]
+          base_repo = os.environ["BASE_REPO"]
+          draft = os.environ["DRAFT"].lower() == "true"
+          update_types = [part.strip() for part in os.environ.get("UPDATE_TYPE", "").split(",") if part.strip()]
+          files = [
+              line.strip()
+              for line in gh(["api", "--paginate", f"repos/{base_repo}/pulls/{os.environ['PR_NUMBER']}/files", "--jq", ".[].filename"]).splitlines()
+              if line.strip()
+          ]
+          reason = "external_or_untrusted"
+          enable = False
+          if draft:
+              reason = "draft"
+          elif head_repo != base_repo:
+              reason = "fork_or_unknown_head"
+          elif any(sensitive(path) for path in files):
+              reason = "trust_root"
+          elif author_id == OWNER_ID and author_login == OWNER_LOGIN:
+              enable = True
+              reason = "owner"
+          elif author_id == DEPENDABOT_ID and author_login == DEPENDABOT_LOGIN:
+              if not update_types:
+                  reason = "dependabot_metadata_missing"
+              elif all(kind in ALLOWED for kind in update_types):
+                  enable = True
+                  reason = "dependabot_patch_or_minor"
+              else:
+                  reason = "dependabot_not_patch_or_minor"
+          print(json.dumps({"enable": enable, "reason": reason, "files": len(files), "update_types": update_types}))
+          if not enable:
+              raise SystemExit(0)
+          view = json.loads(gh(["pr", "view", os.environ["PR_NUMBER"], "--repo", base_repo, "--json", "autoMergeRequest,state"]))
+          if view.get("state") != "OPEN":
+              print("pull request is not open")
+              raise SystemExit(0)
+          if view.get("autoMergeRequest"):
+              print("auto-merge already enabled")
+              raise SystemExit(0)
+          gh([
+              "pr", "merge", os.environ["PR_NUMBER"],
+              "--repo", base_repo,
+              "--squash",
+              "--auto",
+              "--match-head-commit", os.environ["HEAD_SHA"],
+          ])
+          PY

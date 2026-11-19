@@ -1,0 +1,31 @@
+name: GLib source backport
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  optimized-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev
+      - name: Verify vendored source identity
+        run: python3 security/verify_glib_backport.py
+      - name: Optimized pointer and iterator regression
+        run: cargo run --release --locked --manifest-path security/glib-regression/Cargo.toml
+      - name: Record target-specific dependency reachability
+        run: |
+          cargo tree --locked --workspace --all-features --manifest-path src-tauri/Cargo.toml --target x86_64-unknown-linux-gnu -i glib > security/glib-linux-tree.txt
+          cargo tree --locked --workspace --all-features --manifest-path src-tauri/Cargo.toml --target x86_64-pc-windows-msvc -i glib > security/glib-windows-tree.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: glib-target-reachability
+          path: security/glib-*-tree.txt

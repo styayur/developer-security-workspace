@@ -1,0 +1,10 @@
+[package]
+name = "glib-security-regression"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+glib = { path = "../../vendor/glib" }
+
+[workspace]

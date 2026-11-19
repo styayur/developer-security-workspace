@@ -50,3 +50,7 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+# GTK3-compatible RUSTSEC-2024-0429 backport; see security/glib-backport.md.
+[patch.crates-io]
+glib = { path = "../vendor/glib" }

@@ -1,7 +1,9 @@
 use glib::prelude::*;
 use std::hint::black_box;
+mod ownership;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    ownership::verify();
     for _ in 0..1000 {
         let values = ["first", "", "中文", "last"];
         let variant = black_box(values.to_variant());

@@ -32,7 +32,8 @@ This inventory is provided for the Preview release foundation. Build artifacts a
 | rusqlite | MIT | SQLite bindings |
 | SQLite | Public Domain | Local database engine |
 | uuid | Apache-2.0 OR MIT | Identifiers |
-| chrono | MIT OR Apache-2.0 | Timestamps |
+| time | MIT OR Apache-2.0 | Internal RFC3339 timestamps and durations |
+| GLib 0.18.5 source backport | MIT | Optional GTK3 desktop bindings; original terms and per-file source provenance retained in `vendor/glib` and `security/glib-provenance.json` |
 | blake3 | CC0-1.0 OR Apache-2.0 | Fingerprinting |
 | thiserror | MIT OR Apache-2.0 | Errors |
 | tracing | MIT | Diagnostics |
@@ -43,5 +44,13 @@ This inventory is provided for the Preview release foundation. Build artifacts a
 | async-trait | MIT OR Apache-2.0 | Provider abstraction |
 
 ## Optional external tools
+
+The direct Chrono dependency and unused rusqlite Chrono feature were removed;
+the complete platform lock can still list inactive optional Chrono through
+other dependencies. This table is not a binary-composition claim. The reviewed
+GLib source retains its upstream version and license, with upstream/local
+changes disclosed in `security/glib-backport.md`. Imported native regression
+helpers are Apache-2.0; full terms are in
+`security/glib-regression/LICENSE-APACHE-2.0` and file headers identify that scope.
 
 Semgrep, Trivy, TruffleHog, Bandit, and CodeQL are user-installed external tools and are not distributed in this repository. See docs/licensing.md and each project's official license text.

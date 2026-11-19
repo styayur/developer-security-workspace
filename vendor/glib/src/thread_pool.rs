@@ -50,7 +50,7 @@ impl ThreadPool {
                 &mut err,
             );
             if pool.is_null() {
-                Err(from_glib_full(err))
+                Err(crate::Error::from_glib_full(err))
             } else {
                 Ok(ThreadPool(ptr::NonNull::new_unchecked(pool)))
             }
@@ -69,7 +69,7 @@ impl ThreadPool {
                 &mut err,
             );
             if pool.is_null() {
-                Err(from_glib_full(err))
+                Err(crate::Error::from_glib_full(err))
             } else {
                 Ok(ThreadPool(ptr::NonNull::new_unchecked(pool)))
             }
@@ -99,7 +99,7 @@ impl ThreadPool {
                 Ok(ThreadHandle { rx })
             } else {
                 let _ = Box::from_raw(func);
-                Err(from_glib_full(err))
+                Err(crate::Error::from_glib_full(err))
             }
         }
     }
@@ -130,7 +130,7 @@ impl ThreadPool {
             if ret {
                 Ok(())
             } else {
-                Err(from_glib_full(err))
+                Err(crate::Error::from_glib_full(err))
             }
         }
     }

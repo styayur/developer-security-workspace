@@ -588,7 +588,7 @@ impl Variant {
             );
             if variant.is_null() {
                 debug_assert!(!error.is_null());
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             } else {
                 debug_assert!(error.is_null());
                 Ok(from_glib_full(variant))

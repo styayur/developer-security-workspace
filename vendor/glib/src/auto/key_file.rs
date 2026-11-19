@@ -40,7 +40,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(from_glib_full(ret))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -59,7 +59,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(ret)
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -83,7 +83,7 @@ impl KeyFile {
                     length.assume_init() as _,
                 ))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -102,7 +102,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(ret)
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -121,7 +121,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(ret)
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -145,7 +145,7 @@ impl KeyFile {
                     length.assume_init() as _,
                 ))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -188,7 +188,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(ret)
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -207,7 +207,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(from_glib_full(ret))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -236,7 +236,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -257,7 +257,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -280,7 +280,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -303,7 +303,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -321,7 +321,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -340,7 +340,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -382,7 +382,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }

@@ -1,8 +1,10 @@
 use glib::prelude::*;
 use std::hint::black_box;
+mod native_ffi;
 mod ownership;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    native_ffi::verify()?;
     ownership::verify();
     for _ in 0..1000 {
         let values = ["first", "", "中文", "last"];

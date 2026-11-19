@@ -17,7 +17,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -39,10 +39,10 @@ impl KeyFile {
                 &mut error,
             );
             if error.is_null() {
-                let path: GString = from_glib_full(full_path);
+                let path: GString = GString::from_glib_full(full_path);
                 Ok(path::PathBuf::from(&path))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -68,10 +68,10 @@ impl KeyFile {
                 &mut error,
             );
             if error.is_null() {
-                let path: GString = from_glib_full(full_path);
+                let path: GString = GString::from_glib_full(full_path);
                 Ok(path::PathBuf::from(&path))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -113,7 +113,7 @@ impl KeyFile {
                     length.assume_init() as _,
                 ))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -132,7 +132,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(from_glib(ret))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -150,7 +150,7 @@ impl KeyFile {
             if error.is_null() {
                 Ok(from_glib(ret))
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -169,7 +169,7 @@ impl KeyFile {
                 &mut error,
             );
             if !error.is_null() {
-                return Err(from_glib_full(error));
+                return Err(crate::Error::from_glib_full(error));
             }
             Ok(FromGlibContainer::from_glib_container_num(
                 ret,
@@ -193,7 +193,7 @@ impl KeyFile {
                 Ok(from_glib_full(ret))
             } else {
                 ffi::g_free(ret as *mut _);
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -218,7 +218,7 @@ impl KeyFile {
                 ))
             } else {
                 ffi::g_strfreev(ret);
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -244,7 +244,7 @@ impl KeyFile {
                 Ok(from_glib_full(ret))
             } else {
                 ffi::g_free(ret as *mut _);
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -275,7 +275,7 @@ impl KeyFile {
                 ))
             } else {
                 ffi::g_strfreev(ret);
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }

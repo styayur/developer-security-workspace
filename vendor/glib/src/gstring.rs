@@ -1930,7 +1930,7 @@ impl FromGlibPtrFull<*mut u8> for GString {
 impl FromGlibPtrFull<*mut i8> for GString {
     #[inline]
     unsafe fn from_glib_full(ptr: *mut i8) -> Self {
-        from_glib_full(ptr as *mut u8)
+        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
     }
 }
 
@@ -1938,7 +1938,7 @@ impl FromGlibPtrFull<*mut i8> for GString {
 impl FromGlibPtrFull<*const u8> for GString {
     #[inline]
     unsafe fn from_glib_full(ptr: *const u8) -> Self {
-        from_glib_full(ptr as *mut u8)
+        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
     }
 }
 
@@ -1946,7 +1946,7 @@ impl FromGlibPtrFull<*const u8> for GString {
 impl FromGlibPtrFull<*const i8> for GString {
     #[inline]
     unsafe fn from_glib_full(ptr: *const i8) -> Self {
-        from_glib_full(ptr as *mut u8)
+        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
     }
 }
 
@@ -1963,7 +1963,7 @@ impl FromGlibPtrNone<*const u8> for GString {
 impl FromGlibPtrNone<*const i8> for GString {
     #[inline]
     unsafe fn from_glib_none(ptr: *const i8) -> Self {
-        from_glib_none(ptr as *const u8)
+        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
     }
 }
 
@@ -1971,7 +1971,7 @@ impl FromGlibPtrNone<*const i8> for GString {
 impl FromGlibPtrNone<*mut u8> for GString {
     #[inline]
     unsafe fn from_glib_none(ptr: *mut u8) -> Self {
-        from_glib_none(ptr as *const u8)
+        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
     }
 }
 
@@ -1979,7 +1979,7 @@ impl FromGlibPtrNone<*mut u8> for GString {
 impl FromGlibPtrNone<*mut i8> for GString {
     #[inline]
     unsafe fn from_glib_none(ptr: *mut i8) -> Self {
-        from_glib_none(ptr as *const u8)
+        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
     }
 }
 
@@ -2003,7 +2003,7 @@ impl FromGlibPtrBorrow<*const u8> for GString {
 impl FromGlibPtrBorrow<*const i8> for GString {
     #[inline]
     unsafe fn from_glib_borrow(ptr: *const i8) -> Borrowed<Self> {
-        from_glib_borrow(ptr as *const u8)
+        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
     }
 }
 
@@ -2011,7 +2011,7 @@ impl FromGlibPtrBorrow<*const i8> for GString {
 impl FromGlibPtrBorrow<*mut u8> for GString {
     #[inline]
     unsafe fn from_glib_borrow(ptr: *mut u8) -> Borrowed<Self> {
-        from_glib_borrow(ptr as *const u8)
+        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
     }
 }
 
@@ -2019,7 +2019,7 @@ impl FromGlibPtrBorrow<*mut u8> for GString {
 impl FromGlibPtrBorrow<*mut i8> for GString {
     #[inline]
     unsafe fn from_glib_borrow(ptr: *mut i8) -> Borrowed<Self> {
-        from_glib_borrow(ptr as *const u8)
+        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
     }
 }
 

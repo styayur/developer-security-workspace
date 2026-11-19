@@ -31,7 +31,7 @@ impl MarkupParseContext {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }
@@ -82,7 +82,7 @@ impl MarkupParseContext {
             if error.is_null() {
                 Ok(())
             } else {
-                Err(from_glib_full(error))
+                Err(crate::Error::from_glib_full(error))
             }
         }
     }

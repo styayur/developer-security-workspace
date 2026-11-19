@@ -53,6 +53,37 @@ retained, with real initialized GObject/GValue clone/refcount paths added.
 The exact local delta and its SHA-256 are in `glib-local-hardening.patch` and
 `glib-provenance.json`, separate from the two-line upstream iterator fix.
 
+The next source candidate independently reviews and imports the ten typed
+conversion files from Vextessera head
+`2bab4e50ac16e4b684de8cf700f196ede36408f1`, retaining DSW's own Chrono,
+object/value precondition and destructor fixtures. The original FFI call
+sequence, error branches, ownership, casts, offsets and public return types are
+preserved. All matching GError conversions explicitly select `Error`; nullable
+URI outputs explicitly retain NULL-to-None and non-null owned GString, required
+paths remain GString, and KeyFile keeps its GString intermediate before PathBuf.
+Charset pointers retain their original borrowed static lifetime and containers
+retain their original allocation/free behavior.
+
+Peer PR Rust analysis reported zero, but the identical merged tree's later
+full-main analysis reported five findings. That qualification is not hidden:
+the observed remaining path is KeyFile full_path through GString's signed-byte
+forwarder back into a generic translator and unrelated Option/String/object
+implementations. DSW's candidate also explicitly selects the exact existing
+GString unsigned-byte trait implementation in all nine full/none/borrow pointer
+forwarders. The casts and underlying implementations are unchanged; no helper,
+assumed-validity barrier, query model or field-check removal is introduced.
+DSW's own fresh analyses and actual main readback remain required.
+
+The imported Apache-2.0 native FFI fixture retains its complete terms and source
+revision. It tests actual GLib URI populated/absent fields, Unicode encoding,
+error paths, parser/variant and charset conversions. DSW adds a real Unicode
+KeyFile load-from-dirs/full-path fixture with the exact tempfile version already
+locked by the application. The optimized fixture uses v2_78 on Ubuntu24.04 with
+verified native development libraries. A prior latest-image setup failed on
+package mirror file-descriptor/resource errors before any tests ran; the pinned
+LTS setup checks actual pkg-config versions and uses bounded provisioning only
+if needed. No failed test is converted to pass.
+
 RUSTSEC-2024-0429 / GHSA-wrw7-89jp-8q8g formally marks all glib <0.20 affected.
 This is a verified source backport, not a claim that upstream published a fixed
 GTK3 release. Do not dismiss the advisory, change the package version to evade

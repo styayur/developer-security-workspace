@@ -2,3 +2,4 @@
 # Preserve verified upstream/backport payload bytes on every platform.
 vendor/glib/** text eol=lf
 security/** text eol=lf
+security/glib-regression/LICENSE-APACHE-2.0 -text

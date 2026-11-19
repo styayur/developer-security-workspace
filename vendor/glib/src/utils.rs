@@ -119,7 +119,7 @@ pub fn file_get_contents(
                 length.assume_init() as _,
             ))
         } else {
-            Err(from_glib_full(error))
+            Err(crate::Error::from_glib_full(error))
         }
     }
 }

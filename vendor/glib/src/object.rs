@@ -466,7 +466,10 @@ impl<'a> ToGlibPtr<'a, *mut gobject_ffi::GObject> for ObjectRef {
 impl FromGlibPtrNone<*mut gobject_ffi::GObject> for ObjectRef {
     #[inline]
     unsafe fn from_glib_none(ptr: *mut gobject_ffi::GObject) -> Self {
-        debug_assert!(!ptr.is_null());
+        // Local hardening: reject null before either the Rust field read or C
+        // ref operation in release too. Liveness/type/refcount remain caller
+        // obligations of this unsafe API; a null check cannot establish them.
+        assert!(!ptr.is_null(), "ObjectRef requires a non-null object");
         debug_assert_ne!((*ptr).ref_count, 0);
 
         // Attention: This takes ownership of floating references!
@@ -489,7 +492,7 @@ impl FromGlibPtrNone<*const gobject_ffi::GObject> for ObjectRef {
 impl FromGlibPtrFull<*mut gobject_ffi::GObject> for ObjectRef {
     #[inline]
     unsafe fn from_glib_full(ptr: *mut gobject_ffi::GObject) -> Self {
-        debug_assert!(!ptr.is_null());
+        assert!(!ptr.is_null(), "ObjectRef requires a non-null owned object");
         debug_assert_ne!((*ptr).ref_count, 0);
 
         Self {
@@ -502,7 +505,7 @@ impl FromGlibPtrFull<*mut gobject_ffi::GObject> for ObjectRef {
 impl FromGlibPtrBorrow<*mut gobject_ffi::GObject> for ObjectRef {
     #[inline]
     unsafe fn from_glib_borrow(ptr: *mut gobject_ffi::GObject) -> Borrowed<Self> {
-        debug_assert!(!ptr.is_null());
+        assert!(!ptr.is_null(), "ObjectRef requires a non-null borrowed object");
         debug_assert_ne!((*ptr).ref_count, 0);
 
         Borrowed::new(Self {

@@ -11,7 +11,9 @@
     "src/variant_iter.rs",
     "Cargo.toml",
     "src/log.rs",
-    "src/collections/ptr_slice.rs"
+    "src/collections/ptr_slice.rs",
+    "src/object.rs",
+    "src/value.rs"
   ],
   "payloadSha256": {
     ".cargo_vcs_info.json": "b301b45387ec3b66f1eace44a21991aaeac83e3140dab4faa0f6b9f7f0ec445b",
@@ -77,12 +79,12 @@
     "src/gstring_builder.rs": "bfb1b131433531af2efa8765853ef35bbe02dc86120a04b55e6ec97e60cc8fac",
     "src/key_file.rs": "018b398bc1bd50fd0f9925408d6898d2974c7f510d79575cb655dad7e17243de",
     "src/lib.rs": "70abc92bf0d02f3c4989034501065cdf64d70901e511f6720d8cd65fcbb662e1",
-    "src/log.rs": "fb031260080fa023fa22cbae5ba4273cd620f62c47296969267a07548224313d",
+    "src/log.rs": "13bbb18697aa44cf4144d6709dde4f8dd4cc9b877489efe4ef8e8adb7ace146b",
     "src/main_context.rs": "a1dc45489f318659f0c4a94d3143807270e6cce6a8d127afa25944838ce66b25",
     "src/main_context_channel.rs": "e619173fc993bb1ffa350ef692b50b3b268ed5b294208caede8271ae742d80e8",
     "src/main_context_futures.rs": "49a56a433d4f57929d7ced0d438b8dcdbe05b78d097e28d27ead09821cb802be",
     "src/manual_functions.rs": "8e9bea0686535b5a464c82fe8b0356734e82c6aafe8bec9c717d208a6fb76059",
-    "src/object.rs": "61304201fc2dd2ec7d0e8db7343bc62db6e9c81be07b2b16ad3f530a8972f017",
+    "src/object.rs": "0052a76cfb9d70c3e7e8d59cd623c784ea212dae314083065b67658189882e06",
     "src/param_spec.rs": "3ffc0efc67226b180ae4f625d6579749c1d74e58fc8790d4ad837697a65ea3ff",
     "src/prelude.rs": "75479bc1c16d719f472d44f08450b6972af5b4b18a77bcba381fa34428b0a567",
     "src/property.rs": "c35ba9d518b0866f4bd07de5b2433fd70ef0ed38a1fb68839d2e481ab77bd887",
@@ -109,7 +111,7 @@
     "src/unichar.rs": "b489b849e3d7fbfd6563f43526d07647c5344e25f3a0a27803294f2695b7b9ce",
     "src/unicollate.rs": "0bf8fe3d5aca3dc7f9ebba97984b775f0bcbf3b158cdfac03fc71c5b2a11f77d",
     "src/utils.rs": "3c05a182c7e19409198d560e04de9136d3dbbb6beba166def08a76c181be75df",
-    "src/value.rs": "37eb2396c22f6eec372da9561d2c1651e4a9aff1f5fc634ac6db78f885f8be80",
+    "src/value.rs": "0395ebaaf3115f448913752b12fc45411ca5df75aef5303add5e834ab8064ec4",
     "src/value_array.rs": "61b40654fe0771b5fafde9b54f2fba8db9c81cb27f114376024b66b775a785e7",
     "src/variant.rs": "b48295eca732e862b2c5347ee431c2f800c7b0c6b30f6a0f0879cd16fe13eb9b",
     "src/variant_dict.rs": "7b22eeb2804a2ec07d32612b712374559f23ed1e2cc59f0d05b7f28e168d706b",
@@ -137,7 +139,11 @@
     "tests/value.rs": "c796ea2b30559e9c8ab6ebbb6c59c575d365a27b461c20f9ca0b1989dbe01d79"
   },
   "localHardening": {
-    "src/log.rs": "Keep rejecting unknown levels while omitting untrusted numeric bits from panic output.",
-    "src/collections/ptr_slice.rs": "Move owned item out, clear pointer slot before its destructor; keep NULL termination during unwinding."
-  }
+    "src/log.rs": "Preserve foreign bit precedence and constant panic; add safe TryFrom<u32> validation reused by the old FromGlib API and regression.",
+    "src/collections/ptr_slice.rs": "Move owned item out, clear pointer slot before its destructor; keep NULL termination during unwinding.",
+    "src/object.rs": "Reject null in release before ObjectRef field reads/ref operations for none/full/borrow; other unsafe allocation/type/liveness/refcount preconditions remain.",
+    "src/value.rs": "Reject null source/destination/value before GValue copy/clear dereferences; initialization, alignment, liveness and ownership requirements remain."
+  },
+  "reviewedPeerSource": "https://github.com/styayur/vextessera/commit/32b8a75f9f3c1c3544f4cd1e6515aeb86b59cc1d (safe LogLevel validation only; no 64-site conversion transplant)",
+  "localHardeningPatchSha256": "c6c25bef74abea270260cdb99c9e74b156563837f4bf8a60e52b5013ad215047"
 }

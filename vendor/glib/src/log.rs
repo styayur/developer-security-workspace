@@ -69,7 +69,20 @@ impl IntoGlib for LogLevel {
 impl FromGlib<u32> for LogLevel {
     #[inline]
     unsafe fn from_glib(value: u32) -> Self {
-        if value & ffi::G_LOG_LEVEL_ERROR != 0 {
+        match Self::try_from(value) {
+            Ok(level) => level,
+            Err(_) => panic!("Unknown log level"),
+        }
+    }
+}
+
+/// Validates foreign log flags without an unsafe conversion or logging their
+/// contents. Keeps the original recognized-bit priority and flag acceptance.
+impl TryFrom<u32> for LogLevel {
+    type Error = u32;
+
+    fn try_from(value: u32) -> Result<Self, u32> {
+        Ok(if value & ffi::G_LOG_LEVEL_ERROR != 0 {
             Self::Error
         } else if value & ffi::G_LOG_LEVEL_CRITICAL != 0 {
             Self::Critical
@@ -82,8 +95,8 @@ impl FromGlib<u32> for LogLevel {
         } else if value & ffi::G_LOG_LEVEL_DEBUG != 0 {
             Self::Debug
         } else {
-            panic!("Unknown log level")
-        }
+            return Err(value);
+        })
     }
 }
 

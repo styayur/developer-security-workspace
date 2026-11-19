@@ -28,6 +28,31 @@ GObject truncation/weak-reference lifetime and valid/invalid log conversions are
 foreign GLib allocator/FFI path is tested natively on Linux, not claimed as a
 Miri result. Full CodeQL analysis remains enabled for the other findings.
 
+The successor source attempt adds real release-mode null checks before
+ObjectRef none/full/borrow and GValue copy/clear dereferences. These checks
+reject null before memory access; they do not establish allocation liveness,
+alignment, initialization, dynamic type or ownership. Those remain obligations
+of the unsafe caller. Existing refcount and GValue type checks are retained.
+Valid caller behavior and native allocation/refcount operations are unchanged.
+The macro-derived boxed conversion finding is separately under investigation;
+neither current findings nor scanner gates are waived.
+
+Safe `LogLevel::try_from(u32)` validation is an additive API reviewed against
+the peer maintenance source at Vextessera commit
+`32b8a75f9f3c1c3544f4cd1e6515aeb86b59cc1d`. The old `FromGlib` implementation
+delegates to the same accepted-bit priority and still panics with the constant
+message on rejected flags. The harness exercises valid, invalid and combined
+bits through the safe API; it does not claim to execute the old unsafe invalid
+conversion. Its throwing-destructor fixture now uses a transparent Rust
+`Box<Payload>`, safe derived cloning and `Payload::drop` instead of manually
+dereferencing/reconstructing owned raw pointers. Sized Box single-pointer ABI
+and ownership are documented at https://doc.rust-lang.org/std/boxed/index.html#memory-layout .
+Payload allocations remain unique global-allocator Boxes; GLib still owns its
+outer pointer-array allocation. The panic/count/NULL-terminator/reuse tests are
+retained, with real initialized GObject/GValue clone/refcount paths added.
+The exact local delta and its SHA-256 are in `glib-local-hardening.patch` and
+`glib-provenance.json`, separate from the two-line upstream iterator fix.
+
 RUSTSEC-2024-0429 / GHSA-wrw7-89jp-8q8g formally marks all glib <0.20 affected.
 This is a verified source backport, not a claim that upstream published a fixed
 GTK3 release. Do not dismiss the advisory, change the package version to evade

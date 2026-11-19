@@ -459,12 +459,17 @@ unsafe fn init_value(value: *mut gobject_ffi::GValue) {
 
 #[inline]
 unsafe fn copy_into_value(dest: *mut gobject_ffi::GValue, src: *const gobject_ffi::GValue) {
+    // Local hardening: initialization/alignment/liveness and ownership still
+    // belong to the unsafe caller. Reject null before Rust/C dereferences.
+    assert!(!src.is_null(), "GValue copy requires a non-null source");
+    assert!(!dest.is_null(), "GValue copy requires a non-null destination");
     gobject_ffi::g_value_init(dest, (*src).g_type);
     gobject_ffi::g_value_copy(src, dest);
 }
 
 #[inline]
 unsafe fn clear_value(value: *mut gobject_ffi::GValue) {
+    assert!(!value.is_null(), "GValue clear requires a non-null value");
     // Before GLib 2.48, unsetting a zeroed GValue would give critical warnings
     // https://bugzilla.gnome.org/show_bug.cgi?id=755766
     if (*value).g_type != gobject_ffi::G_TYPE_INVALID {

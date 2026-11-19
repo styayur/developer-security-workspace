@@ -1,0 +1,131 @@
+--- a/src/variant_iter.rs
++++ b/src/variant_iter.rs
+@@ -117,13 +117,13 @@
+ 
+     fn impl_get(&self, i: usize) -> &'a str {
+         unsafe {
+-            let p: *mut libc::c_char = std::ptr::null_mut();
++            let mut p: *mut libc::c_char = std::ptr::null_mut();
+             let s = b"&s\0";
+             ffi::g_variant_get_child(
+                 self.variant.to_glib_none().0,
+                 i,
+                 s as *const u8 as *const _,
+-                &p,
++                &mut p,
+                 std::ptr::null::<i8>(),
+             );
+             let p = std::ffi::CStr::from_ptr(p);
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -183,3 +183,5 @@
+     "ffi/v2_78",
+     "gobject_ffi/v2_78",
+ ]
++
++[workspace]
+--- a/src/log.rs
++++ b/src/log.rs
+@@ -69,7 +69,20 @@
+ impl FromGlib<u32> for LogLevel {
+     #[inline]
+     unsafe fn from_glib(value: u32) -> Self {
+-        if value & ffi::G_LOG_LEVEL_ERROR != 0 {
++        match Self::try_from(value) {
++            Ok(level) => level,
++            Err(_) => panic!("Unknown log level"),
++        }
++    }
++}
++
++/// Validates foreign log flags without an unsafe conversion or logging their
++/// contents. Keeps the original recognized-bit priority and flag acceptance.
++impl TryFrom<u32> for LogLevel {
++    type Error = u32;
++
++    fn try_from(value: u32) -> Result<Self, u32> {
++        Ok(if value & ffi::G_LOG_LEVEL_ERROR != 0 {
+             Self::Error
+         } else if value & ffi::G_LOG_LEVEL_CRITICAL != 0 {
+             Self::Critical
+@@ -82,8 +95,8 @@
+         } else if value & ffi::G_LOG_LEVEL_DEBUG != 0 {
+             Self::Debug
+         } else {
+-            panic!("Unknown log level: {value}")
+-        }
++            return Err(value);
++        })
+     }
+ }
+ 
+--- a/src/collections/ptr_slice.rs
++++ b/src/collections/ptr_slice.rs
+@@ -895,11 +895,14 @@
+             while self.len > len {
+                 self.len -= 1;
+                 let p = self.ptr.as_ptr().add(self.len);
+-                ptr::drop_in_place::<T>(p as *mut T);
++                // Move ownership out while the allocation remains ours. Restore
++                // the terminator before a user-defined destructor can unwind.
++                let item = ptr::read(p as *const T);
+                 ptr::write(
+                     p,
+                     Ptr::from(ptr::null_mut::<<T as GlibPtrDefault>::GlibType>()),
+                 );
++                drop(item);
+             }
+         }
+     }
+--- a/src/object.rs
++++ b/src/object.rs
+@@ -466,7 +466,10 @@
+ impl FromGlibPtrNone<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_none(ptr: *mut gobject_ffi::GObject) -> Self {
+-        debug_assert!(!ptr.is_null());
++        // Local hardening: reject null before either the Rust field read or C
++        // ref operation in release too. Liveness/type/refcount remain caller
++        // obligations of this unsafe API; a null check cannot establish them.
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         // Attention: This takes ownership of floating references!
+@@ -489,7 +492,7 @@
+ impl FromGlibPtrFull<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_full(ptr: *mut gobject_ffi::GObject) -> Self {
+-        debug_assert!(!ptr.is_null());
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null owned object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         Self {
+@@ -502,7 +505,7 @@
+ impl FromGlibPtrBorrow<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_borrow(ptr: *mut gobject_ffi::GObject) -> Borrowed<Self> {
+-        debug_assert!(!ptr.is_null());
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null borrowed object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         Borrowed::new(Self {
+--- a/src/value.rs
++++ b/src/value.rs
+@@ -459,12 +459,17 @@
+ 
+ #[inline]
+ unsafe fn copy_into_value(dest: *mut gobject_ffi::GValue, src: *const gobject_ffi::GValue) {
++    // Local hardening: initialization/alignment/liveness and ownership still
++    // belong to the unsafe caller. Reject null before Rust/C dereferences.
++    assert!(!src.is_null(), "GValue copy requires a non-null source");
++    assert!(!dest.is_null(), "GValue copy requires a non-null destination");
+     gobject_ffi::g_value_init(dest, (*src).g_type);
+     gobject_ffi::g_value_copy(src, dest);
+ }
+ 
+ #[inline]
+ unsafe fn clear_value(value: *mut gobject_ffi::GValue) {
++    assert!(!value.is_null(), "GValue clear requires a non-null value");
+     // Before GLib 2.48, unsetting a zeroed GValue would give critical warnings
+     // https://bugzilla.gnome.org/show_bug.cgi?id=755766
+     if (*value).g_type != gobject_ffi::G_TYPE_INVALID {

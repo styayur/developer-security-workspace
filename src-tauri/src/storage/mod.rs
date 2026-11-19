@@ -9,7 +9,7 @@ use lifecycle::decode;
 
 use crate::error::{AppError, AppResult};
 use crate::security_ir::*;
-use chrono::Utc;
+use crate::timestamps;
 use rusqlite::{params, Connection, OptionalExtension, Row};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -69,7 +69,7 @@ impl Database {
         )?;
         connection.execute(
             "INSERT INTO recent_projects(project_id, opened_at) VALUES (?1, ?2) ON CONFLICT(project_id) DO UPDATE SET opened_at=excluded.opened_at",
-            params![id, Utc::now().to_rfc3339()],
+            params![id, timestamps::now_rfc3339()],
         )?;
         Ok(Project {
             id,
@@ -123,7 +123,7 @@ impl Database {
         let run = ScanRun {
             id: id.to_string(),
             project_id: project_id.to_string(),
-            started_at: Utc::now().to_rfc3339(),
+            started_at: timestamps::now_rfc3339(),
             finished_at: None,
             git_branch: project.branch,
             git_commit: project.commit_hash,
@@ -179,14 +179,8 @@ impl Database {
                 .optional()?
                 .ok_or_else(|| AppError::NotFound(format!("Scan run {scan_run_id}")))?
         };
-        let finished = Utc::now();
-        let duration = chrono::DateTime::parse_from_rfc3339(&started)
-            .ok()
-            .map(|value| {
-                (finished - value.with_timezone(&Utc))
-                    .num_milliseconds()
-                    .max(0) as u64
-            });
+        let finished = timestamps::now();
+        let duration = timestamps::elapsed_milliseconds(&started, finished);
         let count: i64 = self.lock()?.query_row(
             "SELECT COUNT(*) FROM findings WHERE scan_run_id=?1",
             [scan_run_id],
@@ -197,7 +191,7 @@ impl Database {
             let tx = connection.transaction()?;
             tx.execute(
                 "UPDATE scan_runs SET finished_at=?1,status=?2,finding_count=?3,duration_ms=?4 WHERE id=?5",
-                params![finished.to_rfc3339(), enum_string(&status)?, count, duration.map(|value| value as i64), scan_run_id],
+                params![timestamps::format_rfc3339(finished), enum_string(&status)?, count, duration, scan_run_id],
             )?;
             lifecycle::finalize(&tx, scan_run_id, &status)?;
             tx.commit()?;
@@ -513,7 +507,7 @@ impl Database {
         connection.execute(
             r#"INSERT INTO app_settings(key,value_json,updated_at) VALUES (?1,?2,?3)
                ON CONFLICT(key) DO UPDATE SET value_json=excluded.value_json,updated_at=excluded.updated_at"#,
-            params![key, serde_json::to_string(value)?, Utc::now().to_rfc3339()],
+            params![key, serde_json::to_string(value)?, timestamps::now_rfc3339()],
         )?;
         Ok(())
     }
@@ -525,7 +519,7 @@ impl Database {
         path: Option<&str>,
         config: &serde_json::Value,
     ) -> AppResult<ScannerConfig> {
-        let now = Utc::now().to_rfc3339();
+        let now = timestamps::now_rfc3339();
         let connection = self.lock()?;
         connection.execute(
             r#"INSERT INTO scanner_configs(project_id,scanner_id,executable_path,config_json,updated_at) VALUES (?1,?2,?3,?4,?5)
@@ -578,7 +572,7 @@ impl Database {
         let tx = connection.transaction()?;
         // Store run metadata once, and each result once. Finding details resolve this reference lazily.
         tx.execute("INSERT INTO scan_artifacts(id,scan_run_id,scanner_id,format,raw_sarif,created_at) VALUES (?1,?2,?3,?4,'{}',?5)",
-            params![id,scan_run_id,scanner_id,format,Utc::now().to_rfc3339()])?;
+            params![id,scan_run_id,scanner_id,format,timestamps::now_rfc3339()])?;
         if let Some(runs) = value
             .get_mut("runs")
             .and_then(serde_json::Value::as_array_mut)
@@ -789,8 +783,8 @@ mod tests {
             name: "test".into(),
             path: path.to_string_lossy().to_string(),
             primary_language: "Rust".into(),
-            last_opened_at: Utc::now().to_rfc3339(),
-            created_at: Utc::now().to_rfc3339(),
+            last_opened_at: timestamps::now_rfc3339(),
+            created_at: timestamps::now_rfc3339(),
             ..Default::default()
         }
     }

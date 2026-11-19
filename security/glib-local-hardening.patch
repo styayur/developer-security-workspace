@@ -1,0 +1,987 @@
+--- a/src/variant_iter.rs
++++ b/src/variant_iter.rs
+@@ -117,13 +117,13 @@
+ 
+     fn impl_get(&self, i: usize) -> &'a str {
+         unsafe {
+-            let p: *mut libc::c_char = std::ptr::null_mut();
++            let mut p: *mut libc::c_char = std::ptr::null_mut();
+             let s = b"&s\0";
+             ffi::g_variant_get_child(
+                 self.variant.to_glib_none().0,
+                 i,
+                 s as *const u8 as *const _,
+-                &p,
++                &mut p,
+                 std::ptr::null::<i8>(),
+             );
+             let p = std::ffi::CStr::from_ptr(p);
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -183,3 +183,5 @@
+     "ffi/v2_78",
+     "gobject_ffi/v2_78",
+ ]
++
++[workspace]
+--- a/src/log.rs
++++ b/src/log.rs
+@@ -69,7 +69,20 @@
+ impl FromGlib<u32> for LogLevel {
+     #[inline]
+     unsafe fn from_glib(value: u32) -> Self {
+-        if value & ffi::G_LOG_LEVEL_ERROR != 0 {
++        match Self::try_from(value) {
++            Ok(level) => level,
++            Err(_) => panic!("Unknown log level"),
++        }
++    }
++}
++
++/// Validates foreign log flags without an unsafe conversion or logging their
++/// contents. Keeps the original recognized-bit priority and flag acceptance.
++impl TryFrom<u32> for LogLevel {
++    type Error = u32;
++
++    fn try_from(value: u32) -> Result<Self, u32> {
++        Ok(if value & ffi::G_LOG_LEVEL_ERROR != 0 {
+             Self::Error
+         } else if value & ffi::G_LOG_LEVEL_CRITICAL != 0 {
+             Self::Critical
+@@ -82,8 +95,8 @@
+         } else if value & ffi::G_LOG_LEVEL_DEBUG != 0 {
+             Self::Debug
+         } else {
+-            panic!("Unknown log level: {value}")
+-        }
++            return Err(value);
++        })
+     }
+ }
+ 
+--- a/src/collections/ptr_slice.rs
++++ b/src/collections/ptr_slice.rs
+@@ -895,11 +895,14 @@
+             while self.len > len {
+                 self.len -= 1;
+                 let p = self.ptr.as_ptr().add(self.len);
+-                ptr::drop_in_place::<T>(p as *mut T);
++                // Move ownership out while the allocation remains ours. Restore
++                // the terminator before a user-defined destructor can unwind.
++                let item = ptr::read(p as *const T);
+                 ptr::write(
+                     p,
+                     Ptr::from(ptr::null_mut::<<T as GlibPtrDefault>::GlibType>()),
+                 );
++                drop(item);
+             }
+         }
+     }
+--- a/src/object.rs
++++ b/src/object.rs
+@@ -466,7 +466,10 @@
+ impl FromGlibPtrNone<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_none(ptr: *mut gobject_ffi::GObject) -> Self {
+-        debug_assert!(!ptr.is_null());
++        // Local hardening: reject null before either the Rust field read or C
++        // ref operation in release too. Liveness/type/refcount remain caller
++        // obligations of this unsafe API; a null check cannot establish them.
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         // Attention: This takes ownership of floating references!
+@@ -489,7 +492,7 @@
+ impl FromGlibPtrFull<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_full(ptr: *mut gobject_ffi::GObject) -> Self {
+-        debug_assert!(!ptr.is_null());
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null owned object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         Self {
+@@ -502,7 +505,7 @@
+ impl FromGlibPtrBorrow<*mut gobject_ffi::GObject> for ObjectRef {
+     #[inline]
+     unsafe fn from_glib_borrow(ptr: *mut gobject_ffi::GObject) -> Borrowed<Self> {
+-        debug_assert!(!ptr.is_null());
++        assert!(!ptr.is_null(), "ObjectRef requires a non-null borrowed object");
+         debug_assert_ne!((*ptr).ref_count, 0);
+ 
+         Borrowed::new(Self {
+--- a/src/value.rs
++++ b/src/value.rs
+@@ -459,12 +459,17 @@
+ 
+ #[inline]
+ unsafe fn copy_into_value(dest: *mut gobject_ffi::GValue, src: *const gobject_ffi::GValue) {
++    // Local hardening: initialization/alignment/liveness and ownership still
++    // belong to the unsafe caller. Reject null before Rust/C dereferences.
++    assert!(!src.is_null(), "GValue copy requires a non-null source");
++    assert!(!dest.is_null(), "GValue copy requires a non-null destination");
+     gobject_ffi::g_value_init(dest, (*src).g_type);
+     gobject_ffi::g_value_copy(src, dest);
+ }
+ 
+ #[inline]
+ unsafe fn clear_value(value: *mut gobject_ffi::GValue) {
++    assert!(!value.is_null(), "GValue clear requires a non-null value");
+     // Before GLib 2.48, unsetting a zeroed GValue would give critical warnings
+     // https://bugzilla.gnome.org/show_bug.cgi?id=755766
+     if (*value).g_type != gobject_ffi::G_TYPE_INVALID {
+--- a/src/auto/functions.rs
++++ b/src/auto/functions.rs
+@@ -205,7 +205,7 @@
+         if error.is_null() {
+             Ok(())
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -234,7 +234,7 @@
+         if error.is_null() {
+             Ok(())
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -277,9 +277,14 @@
+         let mut error = ptr::null_mut();
+         let ret = ffi::g_filename_from_uri(uri.to_glib_none().0, &mut hostname, &mut error);
+         if error.is_null() {
+-            Ok((from_glib_full(ret), from_glib_full(hostname)))
+-        } else {
+-            Err(from_glib_full(error))
++            let hostname = if hostname.is_null() {
++                None
++            } else {
++                Some(crate::GString::from_glib_full(hostname))
++            };
++            Ok((std::path::PathBuf::from_glib_full(ret), hostname))
++        } else {
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -299,7 +304,7 @@
+         if error.is_null() {
+             Ok(from_glib_full(ret))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -342,9 +347,9 @@
+ pub fn console_charset() -> Option<crate::GString> {
+     unsafe {
+         let mut charset = ptr::null();
+-        let ret = from_glib(ffi::g_get_console_charset(&mut charset));
++        let ret = bool::from_glib(ffi::g_get_console_charset(&mut charset));
+         if ret {
+-            Some(from_glib_none(charset))
++            Some(crate::GString::from_glib_none(charset))
+         } else {
+             None
+         }
+@@ -666,7 +671,7 @@
+                 argcp.assume_init() as _,
+             ))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -690,7 +695,7 @@
+         if error.is_null() {
+             Ok(from_glib_full(ret))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -741,7 +746,7 @@
+         if error.is_null() {
+             Ok(from_glib(child_pid.assume_init()))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -764,7 +769,7 @@
+         if error.is_null() {
+             Ok(())
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -780,7 +785,7 @@
+         if error.is_null() {
+             Ok(())
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -799,7 +804,7 @@
+         if error.is_null() {
+             Ok(())
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -854,7 +859,7 @@
+ 
+ #[doc(alias = "g_uuid_string_is_valid")]
+ pub fn uuid_string_is_valid(str: &str) -> bool {
+-    unsafe { from_glib(ffi::g_uuid_string_is_valid(str.to_glib_none().0)) }
++    unsafe { bool::from_glib(ffi::g_uuid_string_is_valid(str.to_glib_none().0)) }
+ }
+ 
+ #[doc(alias = "g_uuid_string_random")]
+--- a/src/auto/key_file.rs
++++ b/src/auto/key_file.rs
+@@ -40,7 +40,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -59,7 +59,7 @@
+             if error.is_null() {
+                 Ok(ret)
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -83,7 +83,7 @@
+                     length.assume_init() as _,
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -102,7 +102,7 @@
+             if error.is_null() {
+                 Ok(ret)
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -121,7 +121,7 @@
+             if error.is_null() {
+                 Ok(ret)
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -145,7 +145,7 @@
+                     length.assume_init() as _,
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -188,7 +188,7 @@
+             if error.is_null() {
+                 Ok(ret)
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -207,7 +207,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -236,7 +236,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -257,7 +257,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -280,7 +280,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -303,7 +303,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -321,7 +321,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -340,7 +340,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -382,7 +382,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+--- a/src/auto/markup_parse_context.rs
++++ b/src/auto/markup_parse_context.rs
+@@ -31,7 +31,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -82,7 +82,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+--- a/src/auto/uri.rs
++++ b/src/auto/uri.rs
+@@ -96,7 +96,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -208,7 +208,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -284,7 +284,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -321,7 +321,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -366,16 +366,36 @@
+             debug_assert_eq!(is_ok == crate::ffi::GFALSE, !error.is_null());
+             if error.is_null() {
+                 Ok((
+-                    from_glib_full(scheme),
+-                    from_glib_full(userinfo),
+-                    from_glib_full(host),
++                    if scheme.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(scheme))
++                    },
++                    if userinfo.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(userinfo))
++                    },
++                    if host.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(host))
++                    },
+                     port.assume_init(),
+-                    from_glib_full(path),
+-                    from_glib_full(query),
+-                    from_glib_full(fragment),
++                    crate::GString::from_glib_full(path),
++                    if query.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(query))
++                    },
++                    if fragment.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(fragment))
++                    },
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -401,12 +421,20 @@
+             debug_assert_eq!(is_ok == crate::ffi::GFALSE, !error.is_null());
+             if error.is_null() {
+                 Ok((
+-                    from_glib_full(scheme),
+-                    from_glib_full(host),
++                    if scheme.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(scheme))
++                    },
++                    if host.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(host))
++                    },
+                     port.assume_init(),
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -457,18 +485,46 @@
+             debug_assert_eq!(is_ok == crate::ffi::GFALSE, !error.is_null());
+             if error.is_null() {
+                 Ok((
+-                    from_glib_full(scheme),
+-                    from_glib_full(user),
+-                    from_glib_full(password),
+-                    from_glib_full(auth_params),
+-                    from_glib_full(host),
++                    if scheme.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(scheme))
++                    },
++                    if user.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(user))
++                    },
++                    if password.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(password))
++                    },
++                    if auth_params.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(auth_params))
++                    },
++                    if host.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(host))
++                    },
+                     port.assume_init(),
+-                    from_glib_full(path),
+-                    from_glib_full(query),
+-                    from_glib_full(fragment),
++                    crate::GString::from_glib_full(path),
++                    if query.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(query))
++                    },
++                    if fragment.is_null() {
++                        None
++                    } else {
++                        Some(crate::GString::from_glib_full(fragment))
++                    },
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -490,7 +546,7 @@
+             if error.is_null() {
+                 Ok(from_glib_full(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+--- a/src/convert.rs
++++ b/src/convert.rs
+@@ -59,7 +59,10 @@
+         })
+     });
+     if result.is_null() {
+-        Err(CvtError::new(unsafe { from_glib_full(error) }, bytes_read))
++        Err(CvtError::new(
++            unsafe { crate::Error::from_glib_full(error) },
++            bytes_read,
++        ))
+     } else {
+         let slice = unsafe { Slice::from_glib_full_num(result, bytes_written as _) };
+         Ok((slice, bytes_read))
+@@ -94,7 +97,10 @@
+         })
+     });
+     if result.is_null() {
+-        Err(CvtError::new(unsafe { from_glib_full(error) }, bytes_read))
++        Err(CvtError::new(
++            unsafe { crate::Error::from_glib_full(error) },
++            bytes_read,
++        ))
+     } else {
+         let slice = unsafe { Slice::from_glib_full_num(result, bytes_written as _) };
+         Ok((slice, bytes_read))
+@@ -150,7 +156,10 @@
+             )
+         };
+         if result.is_null() {
+-            Err(CvtError::new(unsafe { from_glib_full(error) }, bytes_read))
++            Err(CvtError::new(
++                unsafe { crate::Error::from_glib_full(error) },
++                bytes_read,
++            ))
+         } else {
+             let slice = unsafe { Slice::from_glib_full_num(result, bytes_written as _) };
+             Ok((slice, bytes_read))
+@@ -213,8 +222,8 @@
+     unsafe {
+         let is_utf8 = ffi::g_get_filename_charsets(&mut filename_charsets);
+         (
+-            from_glib(is_utf8),
+-            FromGlibPtrContainer::from_glib_none(filename_charsets),
++            bool::from_glib(is_utf8),
++            <Vec<GString> as FromGlibPtrContainer<_, _>>::from_glib_none(filename_charsets),
+         )
+     }
+ }
+@@ -245,7 +254,7 @@
+             )
+         })
+     } else {
+-        Err(unsafe { CvtError::new(from_glib_full(error), bytes_read) })
++        Err(unsafe { CvtError::new(crate::Error::from_glib_full(error), bytes_read) })
+     }
+ }
+ 
+@@ -274,7 +283,7 @@
+             )
+         })
+     } else {
+-        Err(unsafe { CvtError::new(from_glib_full(error), bytes_read) })
++        Err(unsafe { CvtError::new(crate::Error::from_glib_full(error), bytes_read) })
+     }
+ }
+ 
+@@ -303,7 +312,7 @@
+             )
+         })
+     } else {
+-        Err(unsafe { CvtError::new(from_glib_full(error), bytes_read) })
++        Err(unsafe { CvtError::new(crate::Error::from_glib_full(error), bytes_read) })
+     }
+ }
+ 
+@@ -330,7 +339,7 @@
+             )
+         })
+     } else {
+-        Err(unsafe { CvtError::new(from_glib_full(error), bytes_read) })
++        Err(unsafe { CvtError::new(crate::Error::from_glib_full(error), bytes_read) })
+     }
+ }
+ 
+--- a/src/key_file.rs
++++ b/src/key_file.rs
+@@ -17,7 +17,7 @@
+             if error.is_null() {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -39,10 +39,10 @@
+                 &mut error,
+             );
+             if error.is_null() {
+-                let path: GString = from_glib_full(full_path);
++                let path: GString = GString::from_glib_full(full_path);
+                 Ok(path::PathBuf::from(&path))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -68,10 +68,10 @@
+                 &mut error,
+             );
+             if error.is_null() {
+-                let path: GString = from_glib_full(full_path);
++                let path: GString = GString::from_glib_full(full_path);
+                 Ok(path::PathBuf::from(&path))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -113,7 +113,7 @@
+                     length.assume_init() as _,
+                 ))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -132,7 +132,7 @@
+             if error.is_null() {
+                 Ok(from_glib(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -150,7 +150,7 @@
+             if error.is_null() {
+                 Ok(from_glib(ret))
+             } else {
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -169,7 +169,7 @@
+                 &mut error,
+             );
+             if !error.is_null() {
+-                return Err(from_glib_full(error));
++                return Err(crate::Error::from_glib_full(error));
+             }
+             Ok(FromGlibContainer::from_glib_container_num(
+                 ret,
+@@ -193,7 +193,7 @@
+                 Ok(from_glib_full(ret))
+             } else {
+                 ffi::g_free(ret as *mut _);
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -218,7 +218,7 @@
+                 ))
+             } else {
+                 ffi::g_strfreev(ret);
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -244,7 +244,7 @@
+                 Ok(from_glib_full(ret))
+             } else {
+                 ffi::g_free(ret as *mut _);
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+@@ -275,7 +275,7 @@
+                 ))
+             } else {
+                 ffi::g_strfreev(ret);
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             }
+         }
+     }
+--- a/src/manual_functions.rs
++++ b/src/manual_functions.rs
+@@ -66,7 +66,7 @@
+         if error.is_null() {
+             Ok(child_pid)
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -123,7 +123,7 @@
+ //         if error.is_null() {
+ //             Ok(child_pid)
+ //         } else {
+-//             Err(from_glib_full(error))
++//             Err(crate::Error::from_glib_full(error))
+ //         }
+ //     }
+ // }
+@@ -200,7 +200,7 @@
+         //     ))
+         // }
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -215,8 +215,12 @@
+ pub fn charset() -> (bool, Option<&'static GStr>) {
+     unsafe {
+         let mut out_charset = ptr::null();
+-        let is_utf8 = from_glib(ffi::g_get_charset(&mut out_charset));
+-        let charset = from_glib_none(out_charset);
++        let is_utf8 = bool::from_glib(ffi::g_get_charset(&mut out_charset));
++        let charset = if out_charset.is_null() {
++            None
++        } else {
++            Some(GStr::from_ptr(out_charset))
++        };
+         (is_utf8, charset)
+     }
+ }
+@@ -234,7 +238,7 @@
+                 FromRawFd::from_raw_fd(fds[1]),
+             ))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+@@ -253,9 +257,12 @@
+             &mut error,
+         );
+         if error.is_null() {
+-            Ok((ret.into_raw_fd(), from_glib_full(name_used)))
+-        } else {
+-            Err(from_glib_full(error))
++            Ok((
++                ret.into_raw_fd(),
++                std::path::PathBuf::from_glib_full(name_used),
++            ))
++        } else {
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+--- a/src/thread_pool.rs
++++ b/src/thread_pool.rs
+@@ -50,7 +50,7 @@
+                 &mut err,
+             );
+             if pool.is_null() {
+-                Err(from_glib_full(err))
++                Err(crate::Error::from_glib_full(err))
+             } else {
+                 Ok(ThreadPool(ptr::NonNull::new_unchecked(pool)))
+             }
+@@ -69,7 +69,7 @@
+                 &mut err,
+             );
+             if pool.is_null() {
+-                Err(from_glib_full(err))
++                Err(crate::Error::from_glib_full(err))
+             } else {
+                 Ok(ThreadPool(ptr::NonNull::new_unchecked(pool)))
+             }
+@@ -99,7 +99,7 @@
+                 Ok(ThreadHandle { rx })
+             } else {
+                 let _ = Box::from_raw(func);
+-                Err(from_glib_full(err))
++                Err(crate::Error::from_glib_full(err))
+             }
+         }
+     }
+@@ -130,7 +130,7 @@
+             if ret {
+                 Ok(())
+             } else {
+-                Err(from_glib_full(err))
++                Err(crate::Error::from_glib_full(err))
+             }
+         }
+     }
+--- a/src/utils.rs
++++ b/src/utils.rs
+@@ -119,7 +119,7 @@
+                 length.assume_init() as _,
+             ))
+         } else {
+-            Err(from_glib_full(error))
++            Err(crate::Error::from_glib_full(error))
+         }
+     }
+ }
+--- a/src/variant.rs
++++ b/src/variant.rs
+@@ -588,7 +588,7 @@
+             );
+             if variant.is_null() {
+                 debug_assert!(!error.is_null());
+-                Err(from_glib_full(error))
++                Err(crate::Error::from_glib_full(error))
+             } else {
+                 debug_assert!(error.is_null());
+                 Ok(from_glib_full(variant))
+--- a/src/gstring.rs
++++ b/src/gstring.rs
+@@ -1930,7 +1930,7 @@
+ impl FromGlibPtrFull<*mut i8> for GString {
+     #[inline]
+     unsafe fn from_glib_full(ptr: *mut i8) -> Self {
+-        from_glib_full(ptr as *mut u8)
++        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
+     }
+ }
+ 
+@@ -1938,7 +1938,7 @@
+ impl FromGlibPtrFull<*const u8> for GString {
+     #[inline]
+     unsafe fn from_glib_full(ptr: *const u8) -> Self {
+-        from_glib_full(ptr as *mut u8)
++        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
+     }
+ }
+ 
+@@ -1946,7 +1946,7 @@
+ impl FromGlibPtrFull<*const i8> for GString {
+     #[inline]
+     unsafe fn from_glib_full(ptr: *const i8) -> Self {
+-        from_glib_full(ptr as *mut u8)
++        <GString as FromGlibPtrFull<*mut u8>>::from_glib_full(ptr as *mut u8)
+     }
+ }
+ 
+@@ -1963,7 +1963,7 @@
+ impl FromGlibPtrNone<*const i8> for GString {
+     #[inline]
+     unsafe fn from_glib_none(ptr: *const i8) -> Self {
+-        from_glib_none(ptr as *const u8)
++        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
+     }
+ }
+ 
+@@ -1971,7 +1971,7 @@
+ impl FromGlibPtrNone<*mut u8> for GString {
+     #[inline]
+     unsafe fn from_glib_none(ptr: *mut u8) -> Self {
+-        from_glib_none(ptr as *const u8)
++        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
+     }
+ }
+ 
+@@ -1979,7 +1979,7 @@
+ impl FromGlibPtrNone<*mut i8> for GString {
+     #[inline]
+     unsafe fn from_glib_none(ptr: *mut i8) -> Self {
+-        from_glib_none(ptr as *const u8)
++        <GString as FromGlibPtrNone<*const u8>>::from_glib_none(ptr as *const u8)
+     }
+ }
+ 
+@@ -2003,7 +2003,7 @@
+ impl FromGlibPtrBorrow<*const i8> for GString {
+     #[inline]
+     unsafe fn from_glib_borrow(ptr: *const i8) -> Borrowed<Self> {
+-        from_glib_borrow(ptr as *const u8)
++        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
+     }
+ }
+ 
+@@ -2011,7 +2011,7 @@
+ impl FromGlibPtrBorrow<*mut u8> for GString {
+     #[inline]
+     unsafe fn from_glib_borrow(ptr: *mut u8) -> Borrowed<Self> {
+-        from_glib_borrow(ptr as *const u8)
++        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
+     }
+ }
+ 
+@@ -2019,7 +2019,7 @@
+ impl FromGlibPtrBorrow<*mut i8> for GString {
+     #[inline]
+     unsafe fn from_glib_borrow(ptr: *mut i8) -> Borrowed<Self> {
+-        from_glib_borrow(ptr as *const u8)
++        <GString as FromGlibPtrBorrow<*const u8>>::from_glib_borrow(ptr as *const u8)
+     }
+ }
+ 

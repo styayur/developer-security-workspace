@@ -1,7 +1,7 @@
 pub mod demo;
 use crate::error::{AppError, AppResult};
 use crate::security_ir::{Project, SourceFile};
-use chrono::Utc;
+use crate::timestamps;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -35,7 +35,7 @@ pub fn detect_project(path: &Path) -> AppResult<Project> {
         .map(|value| value.to_string_lossy().to_string())
         .filter(|value| !value.is_empty())
         .unwrap_or_else(|| "Workspace".to_string());
-    let now = Utc::now().to_rfc3339();
+    let now = timestamps::now_rfc3339();
     Ok(Project {
         id: Uuid::new_v4().to_string(),
         name,

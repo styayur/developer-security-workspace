@@ -70,7 +70,7 @@ pub fn open(database: &Database, root: &Path) -> AppResult<ImportResult> {
                 scanner_name: name,
                 status: ScannerRunStatus::Completed,
                 started_at: run.started_at.clone(),
-                finished_at: Some(Utc::now().to_rfc3339()),
+                finished_at: Some(timestamps::now_rfc3339()),
                 ..Default::default()
             })?;
         }

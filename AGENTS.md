@@ -46,5 +46,5 @@ Platform-specific, real-device, signing, paid-provider and Windows-native tests 
 ## Release & Dependency Policy
 
 - Do not force-push, bypass rulesets, overwrite existing releases/tags/signatures or delete audit evidence.
-- Major dependency and public-contract changes require compatibility evidence and an explicit maintainer decision.
-- Use the portfolio evidence gate for PR risk classification and exact-head verification.
+- Dependency and public-contract changes require compatibility evidence and authorization consistent with the current task.
+- Use normal pull requests and current required CI. Retired Evidence Gate/R3/R4 approvals are not required.

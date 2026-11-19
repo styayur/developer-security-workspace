@@ -24,7 +24,7 @@ CI records Linux and Windows reverse dependency trees and uses `--locked` for
 the regression harness. The installed Tauri dependency is the same patched path.
 The harness additionally verifies destructor counts, a throwing destructor,
 post-unwind NULL termination, truncation/reuse and final destruction; ordinary
-GString truncation and valid/invalid log conversions are exercised too. The
+GObject truncation/weak-reference lifetime and valid/invalid log conversions are exercised too. The
 foreign GLib allocator/FFI path is tested natively on Linux, not claimed as a
 Miri result. Full CodeQL analysis remains enabled for the other findings.
 

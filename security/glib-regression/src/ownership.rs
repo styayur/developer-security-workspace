@@ -1,4 +1,5 @@
 use glib::collections::PtrSlice;
+use glib::prelude::*;
 use glib::translate::{FromGlib, GlibPtrDefault, IntoGlib, TransparentPtrType};
 use std::sync::{
     atomic::{AtomicUsize, Ordering},
@@ -41,22 +42,23 @@ impl GlibPtrDefault for Owned {
 unsafe impl TransparentPtrType for Owned {}
 
 pub fn verify() {
-    let mut strings: PtrSlice<glib::GString> = ["first", "中文", "last"]
-        .into_iter()
-        .map(glib::GString::from)
-        .collect();
-    strings.truncate(2);
-    assert_eq!(
-        strings
-            .iter()
-            .map(|value| value.as_str())
-            .collect::<Vec<_>>(),
-        ["first", "中文"]
-    );
-    assert!(unsafe { (*strings.as_ptr().add(strings.len())).is_null() });
-    strings.truncate(0);
-    assert!(strings.is_empty());
-    assert!(unsafe { (*strings.as_ptr()).is_null() });
+    let objects = [
+        glib::Object::new::<glib::Object>(),
+        glib::Object::new::<glib::Object>(),
+        glib::Object::new::<glib::Object>(),
+    ];
+    let weak = objects.each_ref().map(ObjectExt::downgrade);
+    let mut objects: PtrSlice<glib::Object> = objects.into_iter().collect();
+    objects.truncate(2);
+    assert_eq!(objects.len(), 2);
+    assert!(weak[0].upgrade().is_some());
+    assert!(weak[1].upgrade().is_some());
+    assert!(weak[2].upgrade().is_none());
+    assert!(unsafe { (*objects.as_ptr().add(objects.len())).is_null() });
+    objects.truncate(0);
+    assert!(objects.is_empty());
+    assert!(weak.iter().all(|value| value.upgrade().is_none()));
+    assert!(unsafe { (*objects.as_ptr()).is_null() });
     let counts = [
         Arc::new(AtomicUsize::new(0)),
         Arc::new(AtomicUsize::new(0)),

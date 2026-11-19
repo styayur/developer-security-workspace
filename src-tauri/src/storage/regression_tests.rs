@@ -2,6 +2,34 @@ use super::tests::{finding, project};
 use super::*;
 
 #[test]
+fn completing_legacy_timestamp_rows_preserves_strings_and_optional_duration() -> AppResult<()> {
+    let dir = tempfile::tempdir()?;
+    let db = Database::new(&dir.path().join("timestamps.db"))?;
+    let project = db.open_project(&project(dir.path()))?;
+    for (started, has_duration) in [
+        ("2020-01-01T08:00:00.123400+08:00", true),
+        ("invalid legacy timestamp", false),
+        ("9999-01-01T00:00:00+00:00", true),
+    ] {
+        let run = db.create_scan_run(&project.id, "scan")?;
+        db.lock()?.execute(
+            "UPDATE scan_runs SET started_at=?1 WHERE id=?2",
+            params![started, run.id],
+        )?;
+        let completed = db.finish_scan_run(&run.id, ScanStatus::Completed)?;
+        assert_eq!(completed.started_at, started);
+        assert_eq!(completed.duration_ms.is_some(), has_duration);
+        if started.starts_with("9999") {
+            assert_eq!(completed.duration_ms, Some(0));
+        }
+        assert!(completed
+            .finished_at
+            .is_some_and(|value| value.ends_with("+00:00")));
+    }
+    Ok(())
+}
+
+#[test]
 fn persisted_counts_backup_corruption_and_overflow_are_checked() -> AppResult<()> {
     let dir = tempfile::tempdir()?;
     let path = dir.path().join("original.db");
@@ -172,8 +200,8 @@ fn scanner_version_round_trips_with_scan_history() {
         scanner_name: "Semgrep".into(),
         status: ScannerRunStatus::Completed,
         version: Some("1.95.0".into()),
-        started_at: Utc::now().to_rfc3339(),
-        finished_at: Some(Utc::now().to_rfc3339()),
+        started_at: timestamps::now_rfc3339(),
+        finished_at: Some(timestamps::now_rfc3339()),
         duration_ms: Some(42),
         error: None,
         logs: Vec::new(),

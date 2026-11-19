@@ -8,8 +8,8 @@ fn setup(dir: &Path) -> (Database, Project) {
             id: "p".into(),
             name: "test".into(),
             path: dir.to_string_lossy().into(),
-            created_at: Utc::now().to_rfc3339(),
-            last_opened_at: Utc::now().to_rfc3339(),
+            created_at: timestamps::now_rfc3339(),
+            last_opened_at: timestamps::now_rfc3339(),
             ..Default::default()
         })
         .unwrap();

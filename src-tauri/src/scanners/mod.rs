@@ -7,8 +7,8 @@ use crate::error::{AppError, AppResult};
 use crate::process::run_command;
 use crate::sarif::{parse_sarif, SarifLog};
 use crate::security_ir::{LogEntry, ScanRequest, ScannerCapabilities, ScannerInstallation};
+use crate::timestamps;
 use async_trait::async_trait;
-use chrono::Utc;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
@@ -41,7 +41,7 @@ impl ScanContext {
     pub fn log(&self, stream: &str, message: impl Into<String>) {
         if let Some(logs) = &self.logs {
             let _ = logs.send(LogEntry {
-                timestamp: Utc::now().to_rfc3339(),
+                timestamp: timestamps::now_rfc3339(),
                 stream: stream.into(),
                 message: crate::secret_redaction::SecretRedactor::redact_text(&message.into()),
             });

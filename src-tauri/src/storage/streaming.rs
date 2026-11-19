@@ -152,7 +152,7 @@ fn commit(
         }
         check_cancel(cancel)?;
         let artifact = Uuid::new_v4().to_string();
-        tx.execute("INSERT INTO scan_artifacts(id,scan_run_id,scanner_id,format,raw_sarif,created_at) VALUES(?1,?2,'import','sarif',?3,?4)",params![artifact,run.id,staged.header.to_string(),Utc::now().to_rfc3339()])?;
+        tx.execute("INSERT INTO scan_artifacts(id,scan_run_id,scanner_id,format,raw_sarif,created_at) VALUES(?1,?2,'import','sarif',?3,?4)",params![artifact,run.id,staged.header.to_string(),timestamps::now_rfc3339()])?;
         let mut count = 0usize;
         let mut statement=tx.prepare("SELECT n.finding,n.candidate,m.previous_id,m.method,p.candidate FROM import_stage.normalized n LEFT JOIN import_matches m ON m.current_id=n.id LEFT JOIN import_previous p ON p.id=m.previous_id ORDER BY n.seq")?;
         let mut rows = statement.query([])?;
@@ -215,13 +215,11 @@ fn commit(
                 .filter(|s| !s.trim().is_empty())
                 .unwrap_or("Unknown scanner");
             let scanner = crate::sarif::normalize::slugify(name);
-            tx.execute("INSERT INTO scanner_runs(id,scan_run_id,scanner_id,scanner_name,status,started_at,finished_at,logs_json) VALUES(?1,?2,?3,?4,'completed',?5,?6,'[]')",params![Uuid::new_v4().to_string(),run.id,scanner,name,run.started_at,Utc::now().to_rfc3339()])?;
+            tx.execute("INSERT INTO scanner_runs(id,scan_run_id,scanner_id,scanner_name,status,started_at,finished_at,logs_json) VALUES(?1,?2,?3,?4,'completed',?5,?6,'[]')",params![Uuid::new_v4().to_string(),run.id,scanner,name,run.started_at,timestamps::now_rfc3339()])?;
         }
-        let now = Utc::now();
-        let duration = chrono::DateTime::parse_from_rfc3339(&run.started_at)
-            .map(|s| (now - s.with_timezone(&Utc)).num_milliseconds().max(0))
-            .unwrap_or_default();
-        tx.execute("UPDATE scan_runs SET status='completed',finished_at=?1,finding_count=?2,duration_ms=?3 WHERE id=?4",params![now.to_rfc3339(),encode_index(count)?,duration,run.id])?;
+        let now = timestamps::now();
+        let duration = timestamps::elapsed_milliseconds(&run.started_at, now).unwrap_or_default();
+        tx.execute("UPDATE scan_runs SET status='completed',finished_at=?1,finding_count=?2,duration_ms=?3 WHERE id=?4",params![timestamps::format_rfc3339(now),encode_index(count)?,duration,run.id])?;
         lifecycle::finalize(&tx, &run.id, &ScanStatus::Completed)?;
         check_cancel(cancel)?;
         tx.commit()?;

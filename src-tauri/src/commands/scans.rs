@@ -4,7 +4,7 @@ use crate::security_ir::{
     LogEntry, ScanProgressEvent, ScanRequest, ScanRun, ScanStatus, ScannerRun, ScannerRunStatus,
 };
 use crate::state::AppState;
-use chrono::Utc;
+use crate::timestamps;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
@@ -125,7 +125,7 @@ pub async fn start_scan(
         if let Some(version) = installation.version {
             scanner_versions.insert(scanner_id.clone(), version);
         }
-        let now = Utc::now().to_rfc3339();
+        let now = timestamps::now_rfc3339();
         if let Err(error) = state.database.upsert_scanner_run(&ScannerRun {
             id: Uuid::new_v4().to_string(),
             scan_run_id: run.id.clone(),
@@ -249,7 +249,7 @@ async fn run_scanner(
     };
     let scanner_run_id = find_queued_scanner_run(&state, &run.id, &scanner_id)
         .unwrap_or_else(|| Uuid::new_v4().to_string());
-    let started_at = Utc::now();
+    let started_at = timestamps::now_rfc3339();
     let (log_tx, mut log_rx) = mpsc::unbounded_channel::<LogEntry>();
     let log_store = Arc::new(Mutex::new(Vec::<LogEntry>::new()));
     let app_for_logs = app.clone();
@@ -384,7 +384,7 @@ async fn run_scanner(
             }
         }
     };
-    let finished_at = Utc::now().to_rfc3339();
+    let finished_at = timestamps::now_rfc3339();
     let scanner_run = ScannerRun {
         id: scanner_run_id,
         scan_run_id: run.id.clone(),
@@ -392,7 +392,7 @@ async fn run_scanner(
         scanner_name: provider.display_name().into(),
         status: status.clone(),
         version,
-        started_at: started_at.to_rfc3339(),
+        started_at,
         finished_at: Some(finished_at),
         duration_ms: Some(elapsed),
         error: error.clone(),

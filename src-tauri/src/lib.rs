@@ -19,6 +19,7 @@ mod sql_integer;
 #[cfg(feature = "desktop")]
 mod state;
 mod storage;
+mod timestamps;
 mod workspace;
 
 #[cfg(feature = "desktop")]
@@ -89,7 +90,7 @@ pub fn run() {}
 mod integration_tests {
     use super::*;
     use crate::security_ir::{FindingFilters, Project, ScanStatus};
-    use chrono::Utc;
+    use crate::timestamps;
     use std::path::Path;
     use uuid::Uuid;
 
@@ -219,8 +220,8 @@ mod integration_tests {
             name: "fixture-pipeline".into(),
             path: directory.path().to_string_lossy().to_string(),
             primary_language: "TypeScript".into(),
-            last_opened_at: Utc::now().to_rfc3339(),
-            created_at: Utc::now().to_rfc3339(),
+            last_opened_at: timestamps::now_rfc3339(),
+            created_at: timestamps::now_rfc3339(),
             ..Default::default()
         };
         let database = storage::Database::new(&directory.path().join("app.db")).expect("database");

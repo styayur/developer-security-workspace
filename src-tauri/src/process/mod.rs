@@ -1,6 +1,6 @@
 use crate::error::{AppError, AppResult};
 use crate::security_ir::LogEntry;
-use chrono::Utc;
+use crate::timestamps;
 use std::path::Path;
 use std::process::Stdio;
 use tokio::io::{AsyncRead, AsyncReadExt};
@@ -183,7 +183,7 @@ where
                     if emitted < 2000 && log_bytes + redacted.len() <= MAX_LOG_BYTES {
                         if let Some(sender) = &logs {
                             let _ = sender.send(LogEntry {
-                                timestamp: Utc::now().to_rfc3339(),
+                                timestamp: timestamps::now_rfc3339(),
                                 stream: stream_name.clone(),
                                 message: redacted.clone(),
                             });

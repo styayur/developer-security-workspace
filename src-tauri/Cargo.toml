@@ -21,8 +21,8 @@ desktop = ["dep:tauri", "dep:tauri-plugin-dialog", "dep:tauri-plugin-opener"]
 [dependencies]
 async-trait = "0.1"
 blake3 = "1"
-chrono = { version = "0.4", features = ["serde"] }
-rusqlite = { version = "0.41", features = ["bundled", "chrono", "serde_json", "hooks"] }
+time = { version = "0.3.55", features = ["parsing"] }
+rusqlite = { version = "0.41", features = ["bundled", "serde_json", "hooks"] }
 regex = "1"
 toml = "1.1"
 serde = { version = "1", features = ["derive"] }

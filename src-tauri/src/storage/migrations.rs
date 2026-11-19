@@ -5,7 +5,7 @@ pub fn migrate(connection: &mut Connection) -> AppResult<()> {
     tx.execute_batch(schema::SCHEMA_SQL)?;
     tx.execute(
         "INSERT OR IGNORE INTO schema_migrations VALUES (1,?1)",
-        [Utc::now().to_rfc3339()],
+        [timestamps::now_rfc3339()],
     )?;
     let version: i64 = tx.query_row("SELECT MAX(version) FROM schema_migrations", [], |row| {
         row.get(0)
@@ -123,7 +123,7 @@ pub fn migrate(connection: &mut Connection) -> AppResult<()> {
         }
         tx.execute(
             "INSERT INTO schema_migrations VALUES (2,?1)",
-            [Utc::now().to_rfc3339()],
+            [timestamps::now_rfc3339()],
         )?;
     }
     tx.commit()?;
